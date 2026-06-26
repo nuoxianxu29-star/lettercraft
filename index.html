@@ -3,44 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="LetterCraft - 将普通文字转换成精美信件，支持多种风格，一键分享">
+    <meta name="description" content="TextCraft - 智能文本生成与转换系统，支持多模板智能文本生成、语义转换引擎、用户级历史记录系统">
     <meta name="theme-color" content="#8b5e3c">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="LetterCraft">
-    
-    <!-- Open Graph / Social Sharing -->
+    <meta name="apple-mobile-web-app-title" content="TextCraft">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="LetterCraft - 风格信件转换器">
-    <meta property="og:description" content="将普通文字转换成精美信件，支持多种风格，一键分享">
+    <meta property="og:title" content="TextCraft - 智能文本处理系统">
+    <meta property="og:description" content="多模板智能文本生成，基于规则的语义转换引擎，用户级历史记录系统">
     <meta property="og:locale" content="zh_CN">
-    
-    <title>LetterCraft - 风格信件转换器</title>
-    
-    <!-- Favicon (inline SVG) -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✉</text></svg>">
-    
-    <!-- Fonts with display=swap for performance -->
+    <title>TextCraft - 智能文本处理系统</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;400;500;600;700&family=ZCOOL+XiaoWei&family=ZCOOL+KuaiLe&family=Long+Cang&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="css/style.css">
-    
-    <!-- Vue 3 CDN -->
-    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 </head>
 <body>
-    <!-- Letter View Mode (shown when URL has ?letter=xxx) -->
-    <div id="letter-view-root"></div>
-    
-    <!-- Main Vue App -->
+    <!-- Vue 3 App Mount Point -->
     <div id="app"></div>
 
-    <!-- Scripts -->
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    
+    <!-- Module Layer (加载顺序很重要) -->
+    <script src="js/store/state.js"></script>
+    <script src="js/services/transformerService.js"></script>
+    <script src="js/core/router.js"></script>
+    
+    <!-- Data Layer -->
     <script src="js/templates.js"></script>
     <script src="js/styles.js"></script>
     <script src="js/transformer.js"></script>
-    <script src="js/app.js"></script>
+    
+    <!-- App Layer -->
+    <script src="js/core/app.js"></script>
 </body>
 </html>

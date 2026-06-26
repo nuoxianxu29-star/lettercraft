@@ -1,6 +1,7 @@
 /* ============================================
-   LetterCraft v7.0 - Enterprise Edition
-   核心流程：写信 → 选风格 → 预览 → 分享
+   TextCraft v8.0 - AI-Powered Text Processing System
+   架构：Vue 3 + 模块化前端架构 (Store / Services / Router / UI)
+   功能：多模板智能文本生成 / 语义转换引擎 / 用户级历史记录 / 导出 JSON/文本
    ============================================ */
 
 /* --- CSS Variables --- */
@@ -144,6 +145,15 @@ body {
     font-weight: 400;
     color: var(--color-primary-dark);
     letter-spacing: 1px;
+}
+
+.logo-subtitle {
+    display: block;
+    font-size: 11px;
+    color: var(--color-text-muted);
+    font-family: var(--font-body);
+    letter-spacing: 0.5px;
+    margin-top: -2px;
 }
 
 .header-actions {
@@ -820,6 +830,19 @@ body {
     width: 100%;
 }
 
+.link-actions-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.link-actions-row button {
+    flex: 1;
+    min-width: 100px;
+    justify-content: center;
+}
+
 .link-tips {
     padding: 12px;
     background: var(--color-bg);
@@ -1024,6 +1047,19 @@ body {
 .toast.show {
     transform: translateX(-50%) translateY(0);
     opacity: 1;
+}
+
+.toast-success { background: var(--color-success); }
+.toast-error { background: var(--color-danger); }
+.toast-warning { background: var(--color-warning); }
+
+.btn-danger {
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+}
+.btn-danger:hover {
+    background: var(--color-danger);
+    color: white;
 }
 
 /* ============================================
