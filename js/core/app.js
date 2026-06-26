@@ -97,7 +97,30 @@ window.getEnvelopeConfig = function getEnvelopeConfig(styleKey) {
                     el.classList.add('phase-4');
                 }, 1900);
                 setTimeout(() => {
-                    el.classList.add('final');
+                    // 动画完成，直接替换为完整信纸视图
+                    document.getElementById('app').innerHTML = `
+                        <div class="letter-view-page">
+                            <div class="letter-view-container">
+                                <div class="letter-view-card ${styleKey}">
+                                    <div class="letter-view-header">
+                                        <div class="letter-view-logo">
+                                            <span class="logo-icon">✉</span>
+                                            <span>TextCraft</span>
+                                        </div>
+                                        <span class="letter-view-style-badge">${escapeHtml(letter.styleName)}</span>
+                                    </div>
+                                    <div class="letter-view-content">
+                                        ${escapeHtml(letter.content).replace(/\n/g, '<br>')}
+                                    </div>
+                                    <div class="letter-view-footer">
+                                        <div class="letter-view-time">${letter.time || ''}</div>
+                                        <a href="${window.location.pathname}" class="letter-view-cta">我也要生成</a>
+                                    </div>
+                                </div>
+                                <div class="letter-view-watermark">由 TextCraft 智能文本处理系统生成</div>
+                            </div>
+                        </div>
+                    `;
                 }, 2800);
             });
         } else {
