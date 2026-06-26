@@ -153,6 +153,77 @@ const EnvelopeComponent = {
     `
 };
 
+// 左侧栏组件
+const SidebarComponent = {
+    props: {
+        activeNav: String,
+        collapsed: Boolean,
+        userName: String,
+        isLoggedIn: Boolean,
+        historyCount: Number,
+    },
+    emits: ['nav-change', 'toggle-collapse', 'login', 'logout', 'user'],
+    data() {
+        return {
+            navItems: [
+                { key: 'editor', name: '编辑器', icon: 'edit' },
+                { key: 'history', name: '历史记录', icon: 'history' },
+                { key: 'templates', name: '模板库', icon: 'template' },
+                { key: 'settings', name: '设置', icon: 'settings' },
+            ]
+        };
+    },
+    methods: {
+        getIcon(name) {
+            const icons = {
+                edit: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+                history: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>',
+                template: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>',
+                settings: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>',
+                collapse: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11,17 6,12 11,7"/><polyline points="18,17 13,12 18,7"/></svg>',
+                expand: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13,17 18,12 13,7"/><polyline points="6,17 11,12 6,7"/></svg>',
+            };
+            return icons[name] || '';
+        }
+    },
+    template: `
+        <aside class="sidebar" :class="{ collapsed: collapsed }">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <span class="logo-icon">⚡</span>
+                    <span v-show="!collapsed" class="logo-text">TextCraft</span>
+                </div>
+                <button class="btn-icon sidebar-collapse-btn" @click="$emit('toggle-collapse')" :title="collapsed ? '展开' : '收起'">
+                    <span v-html="collapsed ? getIcon('expand') : getIcon('collapse')"></span>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <button 
+                    v-for="item in navItems" 
+                    :key="item.key"
+                    class="sidebar-nav-item" 
+                    :class="{ active: activeNav === item.key }"
+                    @click="$emit('nav-change', item.key)"
+                >
+                    <span class="sidebar-nav-icon" v-html="getIcon(item.icon)"></span>
+                    <span v-show="!collapsed" class="sidebar-nav-label">{{ item.name }}</span>
+                    <span v-if="item.key === 'history' && historyCount > 0" v-show="!collapsed" class="sidebar-nav-badge">{{ historyCount }}</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <button v-if="!isLoggedIn" class="sidebar-login-btn" @click="$emit('login')">
+                    <span v-html="getIcon('edit')"></span>
+                    <span v-show="!collapsed">登录</span>
+                </button>
+                <button v-else class="sidebar-user-btn" @click="$emit('user')">
+                    <span class="sidebar-user-avatar">{{ userName ? userName[0] : 'U' }}</span>
+                    <span v-show="!collapsed">{{ userName }}</span>
+                </button>
+            </div>
+        </aside>
+    `
+};
+
 // 链接弹窗组件
 const LinkModalComponent = {
     props: { show: Boolean, link: String },
@@ -646,6 +717,7 @@ const { createApp, ref, computed, watch, onMounted, onUnmounted } = Vue;
 
 const app = createApp({
     components: {
+        'sidebar': SidebarComponent,
         'editor-panel': EditorPanelComponent,
         'preview-panel': PreviewPanelComponent,
         'link-modal': LinkModalComponent,
@@ -674,12 +746,17 @@ const app = createApp({
         const showTemplateModal = ref(false);
         const showHistoryModal = ref(false);
         const showUserModal = ref(false);
+        const showSettingsModal = ref(false);
         const showToast = ref(false);
         const toastMessage = ref('');
         const toastType = ref('info');
         const generatedLink = ref('');
         const autoSaveStatus = ref('');
         const autoSaveStatusShow = ref(false);
+        
+        // 侧边栏状态
+        const activeNav = ref('editor'); // editor | history | templates | settings
+        const sidebarCollapsed = ref(false);
 
         // 信封动画状态
         const showEnvelope = ref(false);
@@ -976,6 +1053,22 @@ const app = createApp({
             envelopePhase.value = 0;
         }
 
+        // 侧边栏导航
+        function onNavChange(navKey) {
+            activeNav.value = navKey;
+            if (navKey === 'history') {
+                showHistoryModal.value = true;
+            } else if (navKey === 'templates') {
+                showTemplateModal.value = true;
+            } else if (navKey === 'settings') {
+                showSettingsModal.value = true;
+            }
+        }
+
+        function toggleSidebar() {
+            sidebarCollapsed.value = !sidebarCollapsed.value;
+        }
+
         // AI 任务处理
         async function onAITask(taskKey) {
             const text = content.value.trim();
@@ -1258,55 +1351,67 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
 
         return {
             content, currentStyle, currentTransformed, currentOriginal, myLetters, userName,
-            showLinkModal, showTemplateModal, showHistoryModal, showUserModal, showToast, toastMessage, toastType,
+            showLinkModal, showTemplateModal, showHistoryModal, showUserModal, showSettingsModal, showToast, toastMessage, toastType,
             generatedLink, autoSaveStatus, autoSaveStatusShow,
             processingMode, aiTasks, currentAITask, aiProcessing,
             isListening, isReading,
             showEnvelope, envelopePhase,
+            activeNav, sidebarCollapsed,
             styles, wordCount, wordCountStatus, isLoggedIn,
             onClear, onStyleSelect, onGenerateLink, onCopyLink, onOpenLink, onCopyText,
             onPrint, onExportJSON, onExportText, onExportImage, onExportHTML,
             onAITask, onVoiceInput, onReadAloud, onLogin, onLogout,
             playEnvelopeAnimation, closeEnvelope,
+            onNavChange, toggleSidebar,
             useTemplate, useHistoryItem, generateLinkFromHistory, deleteHistoryItem, onClearHistory
         };
     },
     template: `
         <div class="app-container">
-            <editor-panel
-                v-model:content="content"
-                :word-count="wordCount"
-                :word-count-status="wordCountStatus"
-                :auto-save-status="autoSaveStatus"
-                :auto-save-status-show="autoSaveStatusShow"
+            <sidebar
+                :active-nav="activeNav"
+                :collapsed="sidebarCollapsed"
                 :user-name="userName"
-                :is-listening="isListening"
-                @clear="onClear"
-                @template="showTemplateModal = true"
-                @history="showHistoryModal = true"
+                :is-logged-in="isLoggedIn"
+                :history-count="myLetters.length"
+                @nav-change="onNavChange"
+                @toggle-collapse="toggleSidebar"
+                @login="onLogin"
                 @user="showUserModal = true"
-                @voice-input="onVoiceInput"
             />
-            <preview-panel
-                :current-style="currentStyle"
-                :current-transformed="currentTransformed"
-                :styles="styles"
-                :processing-mode="processingMode"
-                :ai-tasks="aiTasks"
-                :current-ai-task="currentAITask"
-                :ai-processing="aiProcessing"
-                :is-reading="isReading"
-                @select-style="onStyleSelect"
-                @generate="onGenerateLink"
-                @copy="onCopyText"
-                @print="onPrint"
-                @export-pdf="onPrint"
-                @export-image="onExportImage"
-                @export-html="onExportHTML"
-                @update:processing-mode="processingMode = $event"
-                @ai-task="onAITask"
-                @read-aloud="onReadAloud"
-            />
+            <main class="main-content">
+                <editor-panel
+                    v-model:content="content"
+                    :word-count="wordCount"
+                    :word-count-status="wordCountStatus"
+                    :auto-save-status="autoSaveStatus"
+                    :auto-save-status-show="autoSaveStatusShow"
+                    :user-name="userName"
+                    :is-listening="isListening"
+                    @clear="onClear"
+                    @voice-input="onVoiceInput"
+                />
+                <preview-panel
+                    :current-style="currentStyle"
+                    :current-transformed="currentTransformed"
+                    :styles="styles"
+                    :processing-mode="processingMode"
+                    :ai-tasks="aiTasks"
+                    :current-ai-task="currentAITask"
+                    :ai-processing="aiProcessing"
+                    :is-reading="isReading"
+                    @select-style="onStyleSelect"
+                    @generate="onGenerateLink"
+                    @copy="onCopyText"
+                    @print="onPrint"
+                    @export-pdf="onPrint"
+                    @export-image="onExportImage"
+                    @export-html="onExportHTML"
+                    @update:processing-mode="processingMode = $event"
+                    @ai-task="onAITask"
+                    @read-aloud="onReadAloud"
+                />
+            </main>
             <link-modal
                 :show="showLinkModal"
                 :link="generatedLink"
