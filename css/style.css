@@ -96,8 +96,7 @@ body {
 
 /* --- App Container --- */
 .app-container {
-    display: grid;
-    grid-template-columns: auto 1fr;
+    display: flex;
     min-height: 100vh;
     animation: appFadeIn 0.6s ease;
 }
@@ -267,6 +266,7 @@ body {
 .main-content {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    flex: 1;
     min-height: 100vh;
     overflow: hidden;
 }
