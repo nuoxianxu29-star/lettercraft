@@ -1247,6 +1247,101 @@ body {
     color: white;
 }
 
+.btn-danger-icon {
+    color: var(--color-text-muted);
+}
+.btn-danger-icon:hover {
+    color: var(--color-danger);
+}
+
+/* ============================================
+   Document Manager
+   ============================================ */
+
+.doc-manager-modal {
+    max-width: 600px;
+}
+
+.btn-new-doc {
+    font-size: 13px;
+    padding: 6px 12px;
+}
+
+.doc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.doc-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    transition: all var(--transition-fast);
+}
+
+.doc-item:hover {
+    border-color: var(--color-primary-light);
+    background: var(--color-bg-warm);
+}
+
+.doc-item.active {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: white;
+}
+
+.doc-item.active .doc-item-meta {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.doc-item.active .btn-icon {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.doc-item-info {
+    flex: 1;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.doc-item-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.doc-item-icon {
+    font-size: 16px;
+}
+
+.doc-item-meta {
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
+.doc-item-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.doc-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--color-text-muted);
+}
+
+.doc-empty p {
+    margin-bottom: 16px;
+}
+
 /* ============================================
    Letter View Page
    ============================================ */

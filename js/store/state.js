@@ -9,6 +9,8 @@ const STORAGE_KEYS = {
     HISTORY: 'textcraft_history',
     USER: 'textcraft_user',
     SETTINGS: 'textcraft_settings',
+    DOCUMENTS: 'textcraft_documents',
+    FAVORITES: 'textcraft_favorites',
 };
 
 const MAX_HISTORY = 100;
@@ -21,6 +23,7 @@ function createInitialState() {
             content: '',
             wordCount: 0,
             isDirty: false,
+            currentDocId: null,
         },
         // 转换状态
         transformer: {
@@ -36,11 +39,18 @@ function createInitialState() {
         },
         // 历史记录
         history: [],
+        // 文档管理
+        documents: [],
+        // 收藏夹
+        favorites: [],
         // 设置
         settings: {
             autoSave: true,
             autoSaveInterval: 1000,
             maxHistory: MAX_HISTORY,
+            defaultStyle: null,
+            theme: 'light',
+            fontSize: 18,
         },
         // UI 状态
         ui: {
@@ -165,6 +175,125 @@ const StateStore = {
         this._saveHistory();
     },
 
+    // ==================== 文档管理 ====================
+
+    /**
+     * 创建新文档
+     */
+    createDocument(name = '未命名文档') {
+        const doc = {
+            id: Date.now().toString(),
+            name,
+            content: '',
+            style: null,
+            transformed: '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+        this._state.documents.unshift(doc);
+        this._state.editor.currentDocId = doc.id;
+        this._state.editor.content = '';
+        this._notify('documents', this._state.documents);
+        this._saveDocuments();
+        return doc;
+    },
+
+    /**
+     * 切换文档
+     */
+    switchDocument(docId) {
+        const doc = this._state.documents.find(d => d.id === docId);
+        if (!doc) return;
+
+        // 保存当前文档
+        if (this._state.editor.currentDocId) {
+            this.saveCurrentDocument();
+        }
+
+        this._state.editor.currentDocId = doc.id;
+        this._state.editor.content = doc.content;
+        this._state.transformer.currentStyle = doc.style;
+        this._state.transformer.currentTransformed = doc.transformed;
+        this._updateWordCount();
+        this._notify('editor', this._state.editor);
+        this._notify('transformer', this._state.transformer);
+    },
+
+    /**
+     * 保存当前文档
+     */
+    saveCurrentDocument() {
+        const docId = this._state.editor.currentDocId;
+        if (!docId) return;
+
+        const doc = this._state.documents.find(d => d.id === docId);
+        if (doc) {
+            doc.content = this._state.editor.content;
+            doc.style = this._state.transformer.currentStyle;
+            doc.transformed = this._state.transformer.currentTransformed;
+            doc.updatedAt = new Date().toISOString();
+            this._saveDocuments();
+        }
+    },
+
+    /**
+     * 删除文档
+     */
+    deleteDocument(docId) {
+        const idx = this._state.documents.findIndex(d => d.id === docId);
+        if (idx === -1) return;
+
+        this._state.documents.splice(idx, 1);
+
+        // 如果删除的是当前文档，切换到第一个或创建新的
+        if (this._state.editor.currentDocId === docId) {
+            if (this._state.documents.length > 0) {
+                this.switchDocument(this._state.documents[0].id);
+            } else {
+                this.createDocument();
+            }
+        }
+        this._notify('documents', this._state.documents);
+        this._saveDocuments();
+    },
+
+    /**
+     * 重命名文档
+     */
+    renameDocument(docId, newName) {
+        const doc = this._state.documents.find(d => d.id === docId);
+        if (doc) {
+            doc.name = newName;
+            doc.updatedAt = new Date().toISOString();
+            this._notify('documents', this._state.documents);
+            this._saveDocuments();
+        }
+    },
+
+    // ==================== 收藏夹 ====================
+
+    /**
+     * 添加收藏
+     */
+    addFavorite(item) {
+        const exists = this._state.favorites.some(f => f.id === item.id);
+        if (exists) return;
+        this._state.favorites.unshift(item);
+        this._notify('favorites', this._state.favorites);
+        this._saveFavorites();
+    },
+
+    /**
+     * 移除收藏
+     */
+    removeFavorite(id) {
+        const idx = this._state.favorites.findIndex(f => f.id === id);
+        if (idx === -1) return;
+        this._state.favorites.splice(idx, 1);
+        this._notify('favorites', this._state.favorites);
+        this._saveFavorites();
+    },
+
     /**
      * 更新用户信息
      */
@@ -277,6 +406,22 @@ const StateStore = {
         }
     },
 
+    _saveDocuments() {
+        try {
+            localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(this._state.documents));
+        } catch (e) {
+            console.warn('Failed to save documents:', e);
+        }
+    },
+
+    _saveFavorites() {
+        try {
+            localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(this._state.favorites));
+        } catch (e) {
+            console.warn('Failed to save favorites:', e);
+        }
+    },
+
     _saveUser() {
         try {
             localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(this._state.user));
@@ -295,9 +440,21 @@ const StateStore = {
             const history = localStorage.getItem(STORAGE_KEYS.HISTORY);
             if (history) this._state.history = JSON.parse(history);
 
+            // 加载文档
+            const documents = localStorage.getItem(STORAGE_KEYS.DOCUMENTS);
+            if (documents) this._state.documents = JSON.parse(documents);
+
+            // 加载收藏夹
+            const favorites = localStorage.getItem(STORAGE_KEYS.FAVORITES);
+            if (favorites) this._state.favorites = JSON.parse(favorites);
+
             // 加载用户信息
             const user = localStorage.getItem(STORAGE_KEYS.USER);
             if (user) this._state.user = { ...this._state.user, ...JSON.parse(user) };
+
+            // 加载设置
+            const settings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+            if (settings) this._state.settings = { ...this._state.settings, ...JSON.parse(settings) };
         } catch (e) {
             console.warn('Failed to load from storage:', e);
         }

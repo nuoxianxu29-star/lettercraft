@@ -167,6 +167,7 @@ const SidebarComponent = {
         return {
             navItems: [
                 { key: 'editor', name: '编辑器', icon: 'edit' },
+                { key: 'documents', name: '文档管理', icon: 'documents' },
                 { key: 'history', name: '历史记录', icon: 'history' },
                 { key: 'templates', name: '模板库', icon: 'template' },
                 { key: 'settings', name: '设置', icon: 'settings' },
@@ -177,6 +178,7 @@ const SidebarComponent = {
         getIcon(name) {
             const icons = {
                 edit: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+                documents: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
                 history: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>',
                 template: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>',
                 settings: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>',
@@ -221,6 +223,68 @@ const SidebarComponent = {
                 </button>
             </div>
         </aside>
+    `
+};
+
+// 文档管理弹窗组件
+const DocManagerComponent = {
+    props: { show: Boolean, documents: Array, currentDocId: String },
+    emits: ['close', 'create', 'switch', 'delete', 'rename'],
+    methods: {
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        },
+        formatDate(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+        }
+    },
+    template: `
+        <div class="modal-overlay" :class="{ show: show }" role="dialog" aria-modal="true" @click.self="$emit('close')">
+            <div class="modal doc-manager-modal">
+                <div class="modal-header">
+                    <h3>📄 文档管理</h3>
+                    <div class="modal-header-actions">
+                        <button class="btn-primary btn-new-doc" @click="$emit('create')">+ 新建文档</button>
+                        <button class="btn-icon modal-close" aria-label="关闭" @click="$emit('close')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div class="doc-list">
+                        <template v-if="documents.length === 0">
+                            <div class="doc-empty">
+                                <p>暂无文档</p>
+                                <button class="btn-primary" @click="$emit('create')">创建第一个文档</button>
+                            </div>
+                        </template>
+                        <template v-else>
+                            <div v-for="doc in documents" :key="doc.id" class="doc-item" :class="{ active: doc.id === currentDocId }">
+                                <div class="doc-item-info" @click="$emit('switch', doc.id)">
+                                    <div class="doc-item-name">
+                                        <span class="doc-item-icon">📝</span>
+                                        <span>{{ escapeHtml(doc.name) }}</span>
+                                    </div>
+                                    <div class="doc-item-meta">{{ formatDate(doc.updatedAt) }} · {{ (doc.content || '').length }} 字</div>
+                                </div>
+                                <div class="doc-item-actions">
+                                    <button class="btn-icon" title="重命名" @click="$emit('rename', doc.id)">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                    </button>
+                                    <button class="btn-icon btn-danger-icon" title="删除" @click="$emit('delete', doc.id)">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
     `
 };
 
@@ -724,6 +788,7 @@ const app = createApp({
         'template-modal': TemplateModalComponent,
         'history-modal': HistoryModalComponent,
         'user-modal': UserModalComponent,
+        'doc-manager': DocManagerComponent,
         'envelope': EnvelopeComponent,
         'toast': ToastComponent
     },
@@ -757,6 +822,19 @@ const app = createApp({
         // 侧边栏状态
         const activeNav = ref('editor'); // editor | history | templates | settings
         const sidebarCollapsed = ref(false);
+
+        // 文档管理状态
+        const documents = computed(() => store.get('documents') || []);
+        const currentDocId = computed(() => store.get('editor.currentDocId'));
+        const currentDoc = computed(() => {
+            const docs = documents.value;
+            const id = currentDocId.value;
+            return docs.find(d => d.id === id) || null;
+        });
+        const showDocManager = ref(false);
+
+        // 收藏夹
+        const favorites = computed(() => store.get('favorites') || []);
 
         // 信封动画状态
         const showEnvelope = ref(false);
@@ -1056,7 +1134,9 @@ const app = createApp({
         // 侧边栏导航
         function onNavChange(navKey) {
             activeNav.value = navKey;
-            if (navKey === 'history') {
+            if (navKey === 'documents') {
+                showDocManager.value = true;
+            } else if (navKey === 'history') {
                 showHistoryModal.value = true;
             } else if (navKey === 'templates') {
                 showTemplateModal.value = true;
@@ -1067,6 +1147,43 @@ const app = createApp({
 
         function toggleSidebar() {
             sidebarCollapsed.value = !sidebarCollapsed.value;
+        }
+
+        // 文档管理
+        function onCreateDocument() {
+            const doc = store.createDocument();
+            content.value = '';
+            currentStyle.value = null;
+            currentTransformed.value = '';
+            showToastMsg('新文档已创建', 'success');
+        }
+
+        function onSwitchDocument(docId) {
+            store.switchDocument(docId);
+            content.value = store.get('editor.content') || '';
+            currentStyle.value = store.get('transformer.currentStyle');
+            currentTransformed.value = store.get('transformer.currentTransformed') || '';
+            showDocManager.value = false;
+        }
+
+        function onDeleteDocument(docId) {
+            store.deleteDocument(docId);
+            showToastMsg('文档已删除', 'success');
+        }
+
+        function onRenameDocument(docId) {
+            const doc = documents.value.find(d => d.id === docId);
+            if (!doc) return;
+            const newName = prompt('输入新名称', doc.name);
+            if (newName && newName.trim()) {
+                store.renameDocument(docId, newName.trim());
+                showToastMsg('已重命名', 'success');
+            }
+        }
+
+        function onSaveDocument() {
+            store.saveCurrentDocument();
+            showToastMsg('文档已保存', 'success');
         }
 
         // AI 任务处理
@@ -1363,6 +1480,8 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             onAITask, onVoiceInput, onReadAloud, onLogin, onLogout,
             playEnvelopeAnimation, closeEnvelope,
             onNavChange, toggleSidebar,
+            documents, currentDocId, currentDoc, showDocManager, favorites,
+            onCreateDocument, onSwitchDocument, onDeleteDocument, onRenameDocument, onSaveDocument,
             useTemplate, useHistoryItem, generateLinkFromHistory, deleteHistoryItem, onClearHistory
         };
     },
@@ -1442,6 +1561,16 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                 @close="showUserModal = false"
                 @login="onLogin"
                 @logout="onLogout"
+            />
+            <doc-manager
+                :show="showDocManager"
+                :documents="documents"
+                :current-doc-id="currentDocId"
+                @close="showDocManager = false"
+                @create="onCreateDocument"
+                @switch="onSwitchDocument"
+                @delete="onDeleteDocument"
+                @rename="onRenameDocument"
             />
             <envelope
                 :show="showEnvelope"
