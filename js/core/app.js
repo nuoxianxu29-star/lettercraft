@@ -12,7 +12,7 @@
  * - 导出 PDF / 图片 / HTML / JSON
  */
 
-// ==================== 信件查看模式（路由优先处理） ====================
+// ==================== 信件查看模式（路由优先处理，含信封动画） ====================
 (function initLetterView() {
     const params = new URLSearchParams(window.location.search);
     const letterData = params.get('letter');
@@ -25,6 +25,23 @@
         return div.innerHTML;
     }
 
+    function getEnvelopeConfig(styleKey) {
+        const configs = {
+            formal: { envelopeColor: '#d4c8b8', sealType: 'stamp', sealColor: '#8b5e3c', decoration: '' },
+            casual: { envelopeColor: '#f5e0d0', sealType: 'heart', sealColor: '#d4856a', decoration: 'flower-watermark' },
+            literary: { envelopeColor: '#e8dcc8', sealType: 'wax', sealColor: '#7b68a8', decoration: 'flower-watermark' },
+            concise: { envelopeColor: '#d0dce0', sealType: 'stamp', sealColor: '#4a7c8f', decoration: '' },
+            warm: { envelopeColor: '#f0d8c8', sealType: 'heart', sealColor: '#c47a5a', decoration: 'flower-watermark' },
+            classical: { envelopeColor: '#f0e4c0', sealType: 'chinese-wax', sealColor: '#8b6914', decoration: 'dragon-cloud' },
+            humorous: { envelopeColor: '#f0e0c8', sealType: 'sticker', sealColor: '#e8734a', decoration: '' },
+            academic: { envelopeColor: '#d0d8e0', sealType: 'stamp', sealColor: '#3a506b', decoration: '' },
+            cute: { envelopeColor: '#ffe0ec', sealType: 'heart', sealColor: '#ff69b4', decoration: '' },
+            cyberpunk: { envelopeColor: '#1a1a2e', sealType: 'wax', sealColor: '#00ff88', decoration: '' },
+            classicalTrans: { envelopeColor: '#f0e4c0', sealType: 'chinese-wax', sealColor: '#8b6914', decoration: 'dragon-cloud' },
+        };
+        return configs[styleKey] || { envelopeColor: '#f5f5f5', sealType: 'wax', sealColor: '#c41e3a', decoration: '' };
+    }
+
     try {
         const base64 = letterData.replace(/-/g, '+').replace(/_/g, '/');
         const json = decodeURIComponent(escape(atob(base64)));
@@ -32,30 +49,66 @@
 
         if (letter && letter.content && letter.styleName) {
             document.addEventListener('DOMContentLoaded', () => {
-                const cssClass = letter.styleKey || '';
+                const styleKey = letter.styleKey || '';
+                const cfg = getEnvelopeConfig(styleKey);
+
+                // 先渲染信封动画
                 document.getElementById('app').innerHTML = `
-                    <div class="letter-view-page" data-style="${cssClass}">
-                        <div class="letter-view-container">
-                            <div class="letter-view-card ${cssClass}">
-                                <div class="letter-view-header">
-                                    <div class="letter-view-logo">
-                                        <span class="logo-icon">✉</span>
-                                        <span>TextCraft</span>
+                    <div class="letter-view-page">
+                        <div class="letter-view-envelope-wrapper">
+                            <div class="envelope" id="share-envelope" data-style="${styleKey}"
+                                 style="--envelope-color: ${cfg.envelopeColor}; --seal-color: ${cfg.sealColor}">
+                                <!-- 信封正面 -->
+                                <div class="envelope-front">
+                                    <div class="envelope-flap"></div>
+                                    <div class="envelope-seal ${cfg.sealType}"></div>
+                                </div>
+                                <!-- 信封背面 / 信纸 -->
+                                <div class="envelope-back">
+                                    <div class="envelope-letter">
+                                        <div class="envelope-letter-header">
+                                            <div class="envelope-letter-logo">
+                                                <span>✉</span>
+                                                <span>TextCraft</span>
+                                            </div>
+                                            <span class="envelope-letter-badge">${escapeHtml(letter.styleName)}</span>
+                                        </div>
+                                        <div class="envelope-letter-content">${escapeHtml(letter.content).replace(/\n/g, '<br>')}</div>
+                                        <div class="envelope-letter-footer">由 TextCraft 智能文本处理系统生成 · ${letter.time || ''}</div>
                                     </div>
-                                    <span class="letter-view-style-badge">${escapeHtml(letter.styleName)}</span>
-                                </div>
-                                <div class="letter-view-content">
-                                    ${escapeHtml(letter.content).replace(/\n/g, '<br>')}
-                                </div>
-                                <div class="letter-view-footer">
-                                    <div class="letter-view-time">${letter.time || ''}</div>
-                                    <a href="${window.location.pathname}" class="letter-view-cta">我也要生成</a>
                                 </div>
                             </div>
-                            <div class="letter-view-watermark">由 TextCraft 智能文本处理系统生成</div>
                         </div>
                     </div>
                 `;
+
+                // 播放动画序列
+                const el = document.getElementById('share-envelope');
+                if (!el) return;
+
+                // Phase 1: 飞入 (0.6s)
+                el.classList.add('phase-1');
+
+                // Phase 2: 翻转 (0.5s + 0.6s delay)
+                setTimeout(() => {
+                    el.classList.remove('phase-1');
+                    el.classList.add('phase-2');
+                }, 700);
+
+                // Phase 3: 信封打开 (0.4s + 1.3s)
+                setTimeout(() => {
+                    el.classList.add('phase-3');
+                }, 1400);
+
+                // Phase 4: 信纸滑出 (0.8s + 1.8s)
+                setTimeout(() => {
+                    el.classList.add('phase-4');
+                }, 1900);
+
+                // Phase 5: 完成 (2.8s)
+                setTimeout(() => {
+                    el.classList.add('final');
+                }, 2800);
             });
             window._letterViewMode = true;
         } else {
