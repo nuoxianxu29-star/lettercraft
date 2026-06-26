@@ -756,7 +756,7 @@ body {
 .link-input-group {
     display: flex;
     gap: 8px;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 }
 
 .link-input-group input {
@@ -769,32 +769,6 @@ body {
     font-family: monospace;
     font-size: 13px;
     outline: none;
-}
-
-.link-shorten-group {
-    margin-bottom: 16px;
-}
-
-.link-shorten-group button {
-    width: 100%;
-    padding: 10px;
-    border: 1px dashed var(--color-accent);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--color-primary);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.link-shorten-group button:hover:not(:disabled) {
-    background: var(--color-bg);
-    border-color: var(--color-primary);
-}
-
-.link-shorten-group button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
 }
 
 .link-tips {
