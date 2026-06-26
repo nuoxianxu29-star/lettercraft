@@ -98,6 +98,7 @@ class LetterCraftApp {
         this.modalClose = document.getElementById('modal-close');
         this.generatedLink = document.getElementById('generated-link');
         this.btnCopyLink = document.getElementById('btn-copy-link');
+        this.btnShortenLink = document.getElementById('btn-shorten-link');
 
         // Toast
         this.toast = document.getElementById('toast');
@@ -128,6 +129,7 @@ class LetterCraftApp {
             if (e.target === this.linkModal) this.closeLinkModal();
         });
         this.btnCopyLink.addEventListener('click', () => this.onCopyLink());
+        this.btnShortenLink.addEventListener('click', () => this.onShortenLink());
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
@@ -293,6 +295,49 @@ class LetterCraftApp {
     onCopyLink() {
         this.copyToClipboard(this.generatedLink.value);
         this.showToast('链接已复制');
+    }
+
+    async onShortenLink() {
+        const longUrl = this.generatedLink.value;
+        if (!longUrl) return;
+
+        // Show loading state
+        this.btnShortenLink.textContent = '⏳ 生成中...';
+        this.btnShortenLink.disabled = true;
+
+        try {
+            // Use is.gd API to shorten the link (no preview page, direct redirect)
+            const response = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}`);
+            const data = await response.json();
+            
+            if (data.shorturl) {
+                this.generatedLink.value = data.shorturl;
+                this.btnShortenLink.textContent = '✅ 已缩短';
+                this.showToast('短链接已生成');
+            } else if (data.errorcode) {
+                throw new Error(data.errormessage || 'Failed');
+            } else {
+                throw new Error('Failed');
+            }
+        } catch (e) {
+            // Fallback: use v.gd API
+            try {
+                const response = await fetch(`https://v.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}`);
+                const data = await response.json();
+                
+                if (data.shorturl) {
+                    this.generatedLink.value = data.shorturl;
+                    this.btnShortenLink.textContent = '✅ 已缩短';
+                    this.showToast('短链接已生成');
+                } else {
+                    throw new Error('Failed');
+                }
+            } catch (e2) {
+                this.btnShortenLink.textContent = '✨ 生成短链接';
+                this.btnShortenLink.disabled = false;
+                this.showToast('短链接生成失败，请使用原链接');
+            }
+        }
     }
 
     // ==================== Copy Text ====================
