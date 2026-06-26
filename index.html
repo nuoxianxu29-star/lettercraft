@@ -2,56 +2,109 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="LetterCraft - 将普通文字转换成精美信件，支持多种风格，一键分享">
+    <meta name="theme-color" content="#8b5e3c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="LetterCraft">
+    
+    <!-- Open Graph / Social Sharing -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="LetterCraft - 风格信件转换器">
+    <meta property="og:description" content="将普通文字转换成精美信件，支持多种风格，一键分享">
+    <meta property="og:locale" content="zh_CN">
+    
     <title>LetterCraft - 风格信件转换器</title>
+    
+    <!-- Favicon (inline SVG) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✉</text></svg>">
+    
+    <!-- Fonts with display=swap for performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;400;500;600;700&family=ZCOOL+XiaoWei&family=ZCOOL+KuaiLe&family=Long+Cang&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <!-- 主应用界面 -->
-    <div class="app-container" id="app-container">
-        <!-- 左侧：写信区 -->
-        <section class="write-panel">
+    <!-- Letter View Mode (shown when URL has ?letter=xxx) -->
+    <div id="letter-view-root"></div>
+    
+    <!-- Main App Interface -->
+    <div class="app-container" id="app-container" style="display: none;">
+        <!-- Left: Write Panel -->
+        <section class="write-panel" aria-label="写信区域">
             <div class="panel-header">
                 <div class="logo">
-                    <span class="logo-icon">✉</span>
+                    <span class="logo-icon" aria-hidden="true">✉</span>
                     <h1>LetterCraft</h1>
                 </div>
-                <button class="btn-icon" id="btn-clear" title="清空">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                    </svg>
-                </button>
+                <div class="header-actions">
+                    <button class="btn-icon" id="btn-history" title="历史记录" aria-label="查看历史记录">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12,6 12,12 16,14"/>
+                        </svg>
+                    </button>
+                    <button class="btn-icon" id="btn-template" title="使用模板" aria-label="使用模板">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="3" y1="9" x2="21" y2="9"/>
+                            <line x1="9" y1="21" x2="9" y2="9"/>
+                        </svg>
+                    </button>
+                    <button class="btn-icon" id="btn-clear" title="清空 (Ctrl+D)" aria-label="清空内容">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
             
             <div class="editor-wrapper">
                 <div class="letter-paper">
-                    <textarea id="letter-input" placeholder="在这里写下你的信件内容...&#10;&#10;例如：&#10;亲爱的朋友：&#10;&#10;你好！最近过得怎么样？&#10;&#10;祝好&#10;你的名字"></textarea>
+                    <div class="paper-lines" aria-hidden="true"></div>
+                    <textarea 
+                        id="letter-input" 
+                        placeholder="在这里写下你的信件内容...&#10;&#10;例如：&#10;亲爱的朋友：&#10;&#10;你好！最近过得怎么样？&#10;&#10;祝好&#10;你的名字"
+                        aria-label="信件内容输入框"
+                        maxlength="5000"
+                        spellcheck="true"
+                    ></textarea>
                 </div>
             </div>
 
             <div class="editor-footer">
-                <span class="word-count" id="word-count">0 字</span>
+                <span class="word-count" id="word-count" aria-live="polite">0 字</span>
+                <span class="auto-save-status" id="auto-save-status" aria-live="polite"></span>
             </div>
         </section>
 
-        <!-- 右侧：风格选择 + 预览 -->
-        <section class="preview-panel">
+        <!-- Right: Style Selection + Preview -->
+        <section class="preview-panel" aria-label="预览区域">
             <div class="panel-header">
                 <h2>选择风格</h2>
+                <div class="panel-header-actions">
+                    <button class="btn-icon" id="btn-print" title="打印 (Ctrl+P)" aria-label="打印信件">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6,9 6,2 18,2 18,9"/>
+                            <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+                            <rect x="6" y="14" width="12" height="8"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
-            <!-- 风格选择区 -->
-            <div class="style-grid" id="style-grid">
-                <!-- 由 JS 动态生成 -->
+            <!-- Style Selection -->
+            <div class="style-grid" id="style-grid" role="listbox" aria-label="选择信件风格">
+                <!-- Generated by JS -->
             </div>
 
-            <!-- 预览区（与最终分享效果完全一致） -->
-            <div class="preview-area" id="preview-area">
+            <!-- Preview Area -->
+            <div class="preview-area" id="preview-area" aria-live="polite">
                 <div class="empty-preview">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                         <circle cx="12" cy="12" r="3"/>
                     </svg>
@@ -59,17 +112,17 @@
                 </div>
             </div>
 
-            <!-- 操作按钮 -->
+            <!-- Action Buttons -->
             <div class="preview-actions" id="preview-actions" style="display: none;">
-                <button class="btn-primary btn-generate" id="btn-generate">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <button class="btn-primary btn-generate" id="btn-generate" aria-label="生成分享链接">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
                         <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
                     </svg>
                     生成分享链接
                 </button>
-                <button class="btn-secondary btn-copy" id="btn-copy">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <button class="btn-secondary btn-copy" id="btn-copy" aria-label="复制文字">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                         <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
                     </svg>
@@ -79,12 +132,12 @@
         </section>
     </div>
 
-    <!-- 链接生成弹窗 -->
-    <div class="modal-overlay" id="link-modal">
+    <!-- Link Generation Modal -->
+    <div class="modal-overlay" id="link-modal" role="dialog" aria-modal="true" aria-labelledby="link-modal-title">
         <div class="modal">
             <div class="modal-header">
-                <h3>✨ 分享链接已生成</h3>
-                <button class="btn-icon modal-close" id="modal-close">
+                <h3 id="link-modal-title">✨ 分享链接已生成</h3>
+                <button class="btn-icon modal-close" id="modal-close" aria-label="关闭弹窗">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"/>
                         <line x1="6" y1="6" x2="18" y2="18"/>
@@ -96,8 +149,18 @@
                     <p>把链接发给对方，ta 就能看到这封精美的信了</p>
                 </div>
                 <div class="link-input-group">
-                    <input type="text" id="generated-link" readonly>
+                    <input type="text" id="generated-link" readonly aria-label="分享链接">
                     <button class="btn-primary" id="btn-copy-link">复制链接</button>
+                </div>
+                <div class="link-actions">
+                    <button class="btn-secondary" id="btn-open-link" aria-label="在新窗口打开链接">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+                            <polyline points="15,3 21,3 21,9"/>
+                            <line x1="10" y1="14" x2="21" y2="3"/>
+                        </svg>
+                        预览效果
+                    </button>
                 </div>
                 <div class="link-tips">
                     <p>💡 链接包含完整信件数据，对方打开即可看到</p>
@@ -106,9 +169,57 @@
         </div>
     </div>
 
-    <!-- Toast -->
-    <div class="toast" id="toast"></div>
+    <!-- Template Selection Modal -->
+    <div class="modal-overlay" id="template-modal" role="dialog" aria-modal="true" aria-labelledby="template-modal-title">
+        <div class="modal template-modal">
+            <div class="modal-header">
+                <h3 id="template-modal-title">选择模板</h3>
+                <button class="btn-icon modal-close" id="template-close" aria-label="关闭弹窗">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="template-categories" id="template-categories">
+                    <!-- Generated by JS -->
+                </div>
+                <div class="template-grid" id="template-grid">
+                    <!-- Generated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
 
+    <!-- History Modal -->
+    <div class="modal-overlay" id="history-modal" role="dialog" aria-modal="true" aria-labelledby="history-modal-title">
+        <div class="modal history-modal">
+            <div class="modal-header">
+                <h3 id="history-modal-title">历史记录</h3>
+                <div class="modal-header-actions">
+                    <button class="btn-secondary btn-clear-history" id="btn-clear-history" aria-label="清空历史记录">清空</button>
+                    <button class="btn-icon modal-close" id="history-close" aria-label="关闭弹窗">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="history-list" id="history-list">
+                    <!-- Generated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <!-- Scripts -->
+    <script src="js/templates.js"></script>
     <script src="js/styles.js"></script>
     <script src="js/transformer.js"></script>
     <script src="js/app.js"></script>
