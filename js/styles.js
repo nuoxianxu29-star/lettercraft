@@ -1,7 +1,110 @@
 /**
- * 风格模板定义 v2.0
- * 8 种风格：正式商务、轻松友好、文艺诗意、简洁高效、温暖关怀、古风雅韵、幽默风趣、学术严谨
+ * 风格模板定义 v3.0 - 信封动画版
+ * 10 种风格 + 信封设计配置
  */
+
+// 信封设计配置
+const ENVELOPE_CONFIG = {
+    formal: {
+        envelopeColor: '#f5f5f5',
+        envelopeTexture: 'paper-white',
+        sealType: 'stamp', // 邮票
+        sealColor: '#333333',
+        decoration: 'corner-lines',
+        flapStyle: 'pointed',
+        paperSlide: 'from-top',
+    },
+    casual: {
+        envelopeColor: '#ffe4c4',
+        envelopeTexture: 'paper-craft',
+        sealType: 'sticker', // 贴纸
+        sealColor: '#ff69b4',
+        decoration: 'doodle',
+        flapStyle: 'rounded',
+        paperSlide: 'from-bottom',
+    },
+    literary: {
+        envelopeColor: '#f5e6d3',
+        envelopeTexture: 'paper-aged',
+        sealType: 'wax', // 封蜡
+        sealColor: '#8b0000',
+        decoration: 'flower-watermark',
+        flapStyle: 'classic',
+        paperSlide: 'gentle',
+    },
+    concise: {
+        envelopeColor: '#ffffff',
+        envelopeTexture: 'paper-clean',
+        sealType: 'minimal',
+        sealColor: '#4a7c8f',
+        decoration: 'none',
+        flapStyle: 'flat',
+        paperSlide: 'fast',
+    },
+    warm: {
+        envelopeColor: '#fff5eb',
+        envelopeTexture: 'paper-soft',
+        sealType: 'heart-sticker',
+        sealColor: '#ff6b6b',
+        decoration: 'warm-pattern',
+        flapStyle: 'curved',
+        paperSlide: 'smooth',
+    },
+    classical: {
+        envelopeColor: '#f8f4e8',
+        envelopeTexture: 'paper-traditional',
+        sealType: 'chinese-wax', // 中式封蜡
+        sealColor: '#c41e3a',
+        decoration: 'dragon-cloud',
+        flapStyle: 'oriental',
+        paperSlide: 'elegant',
+    },
+    humorous: {
+        envelopeColor: '#ffeb3b',
+        envelopeTexture: 'paper-fun',
+        sealType: 'emoji-sticker',
+        sealColor: '#ff9800',
+        decoration: 'fun-doodles',
+        flapStyle: 'wavy',
+        paperSlide: 'bounce',
+    },
+    academic: {
+        envelopeColor: '#e8f4f8',
+        envelopeTexture: 'paper-academic',
+        sealType: 'official-stamp',
+        sealColor: '#1a5f7a',
+        decoration: 'university-border',
+        flapStyle: 'formal',
+        paperSlide: 'precise',
+    },
+    cyberpunk: {
+        envelopeColor: '#1a1a2e',
+        envelopeTexture: 'digital',
+        sealType: 'qr-code',
+        sealColor: '#00ff88',
+        decoration: 'neon-border',
+        flapStyle: 'glitch',
+        paperSlide: 'matrix',
+    },
+    cute: {
+        envelopeColor: '#fff0f5',
+        envelopeTexture: 'paper-cute',
+        sealType: 'animal-sticker',
+        sealColor: '#ff69b4',
+        decoration: 'sparkles',
+        flapStyle: 'heart',
+        paperSlide: 'float',
+    },
+    official: {
+        envelopeColor: '#f0f0f0',
+        envelopeTexture: 'paper-official',
+        sealType: 'official-seal',
+        sealColor: '#cc0000',
+        decoration: 'red-header',
+        flapStyle: 'government',
+        paperSlide: 'standard',
+    },
+};
 
 const STYLE_TEMPLATES = {
     formal: {
@@ -306,8 +409,13 @@ const STYLE_TEMPLATES = {
 function getAllStyles() {
     return Object.keys(STYLE_TEMPLATES).map(key => ({
         key,
-        ...STYLE_TEMPLATES[key]
+        ...STYLE_TEMPLATES[key],
+        envelope: ENVELOPE_CONFIG[key] || ENVELOPE_CONFIG.formal
     }));
+}
+
+function getEnvelopeConfig(styleKey) {
+    return ENVELOPE_CONFIG[styleKey] || ENVELOPE_CONFIG.formal;
 }
 
 function getStyleTemplate(styleKey) {

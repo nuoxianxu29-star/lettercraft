@@ -90,6 +90,69 @@ const ToastComponent = {
     `
 };
 
+// 信封动画组件
+const EnvelopeComponent = {
+    props: {
+        show: Boolean,
+        styleKey: String,
+        styleName: String,
+        content: String,
+        animationPhase: { type: Number, default: 0 },
+    },
+    emits: ['close', 'complete'],
+    computed: {
+        envelopeConfig() {
+            if (typeof getEnvelopeConfig !== 'undefined') {
+                return getEnvelopeConfig(this.styleKey);
+            }
+            return { sealType: 'wax', sealColor: '#c41e3a' };
+        },
+        sealClass() {
+            return this.envelopeConfig.sealType || 'wax';
+        },
+        sealColor() {
+            return this.envelopeConfig.sealColor || '#c41e3a';
+        },
+        decorationClass() {
+            return this.envelopeConfig.decoration || '';
+        },
+    },
+    methods: {
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        },
+    },
+    template: `
+        <div class="envelope-overlay" v-if="show" @click.self="$emit('close')">
+            <div class="envelope" :class="[styleKey, { 'phase-1': animationPhase >= 1, 'phase-2': animationPhase >= 2, 'phase-3': animationPhase >= 3, 'phase-4': animationPhase >= 4, 'final': animationPhase >= 5 }]" :style="{ '--envelope-color': envelopeConfig.envelopeColor, '--seal-color': sealColor }">
+                <!-- 信封正面 -->
+                <div class="envelope-front">
+                    <div class="envelope-flap" :class="{ 'open': animationPhase >= 3 }"></div>
+                    <div class="envelope-seal" :class="sealClass"></div>
+                    <div class="envelope-decoration" :class="decorationClass"></div>
+                </div>
+                <!-- 信封背面 -->
+                <div class="envelope-back">
+                    <!-- 信纸 -->
+                    <div class="envelope-letter" :class="{ 'slide-out': animationPhase >= 4 }">
+                        <div class="envelope-letter-header">
+                            <div class="envelope-letter-logo">
+                                <span>⚡</span>
+                                <span>TextCraft</span>
+                            </div>
+                            <span class="envelope-letter-badge">{{ styleName }}</span>
+                        </div>
+                        <div class="envelope-letter-content">{{ escapeHtml(content) }}</div>
+                        <div class="envelope-letter-footer">由 TextCraft 智能文本处理系统生成</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `
+};
+
 // 链接弹窗组件
 const LinkModalComponent = {
     props: { show: Boolean, link: String },
@@ -589,6 +652,7 @@ const app = createApp({
         'template-modal': TemplateModalComponent,
         'history-modal': HistoryModalComponent,
         'user-modal': UserModalComponent,
+        'envelope': EnvelopeComponent,
         'toast': ToastComponent
     },
     setup() {
@@ -616,6 +680,11 @@ const app = createApp({
         const generatedLink = ref('');
         const autoSaveStatus = ref('');
         const autoSaveStatusShow = ref(false);
+
+        // 信封动画状态
+        const showEnvelope = ref(false);
+        const envelopePhase = ref(0);
+        let envelopeTimer = null;
 
         // AI 处理相关状态
         const processingMode = ref('style');
@@ -869,7 +938,42 @@ const app = createApp({
                 currentTransformed.value = transformer.transform(text, styleKey);
             }
 
+            // 触发信封动画
+            playEnvelopeAnimation();
+
             store.updateTransform(styleKey, currentTransformed.value, text);
+        }
+
+        // 信封动画播放
+        function playEnvelopeAnimation() {
+            showEnvelope.value = true;
+            envelopePhase.value = 0;
+
+            // 动画序列：飞入(0.6s) → 翻转(0.5s) → 打开封口(0.5s) → 信纸滑出(0.8s) → 完成
+            clearTimeout(envelopeTimer);
+
+            // 阶段 1: 飞入
+            envelopePhase.value = 1;
+            envelopeTimer = setTimeout(() => {
+                envelopePhase.value = 2; // 翻转
+            }, 600);
+
+            envelopeTimer = setTimeout(() => {
+                envelopePhase.value = 3; // 打开封口
+            }, 1100);
+
+            envelopeTimer = setTimeout(() => {
+                envelopePhase.value = 4; // 信纸滑出
+            }, 1600);
+
+            envelopeTimer = setTimeout(() => {
+                envelopePhase.value = 5; // 完成，保持展示
+            }, 2400);
+        }
+
+        function closeEnvelope() {
+            showEnvelope.value = false;
+            envelopePhase.value = 0;
         }
 
         // AI 任务处理
@@ -1145,6 +1249,7 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             clearTimeout(autoSaveTimer);
             clearTimeout(toastTimer);
             clearTimeout(statusTimer);
+            clearTimeout(envelopeTimer);
             // 停止语音识别
             if (recognition) { try { recognition.stop(); } catch(e) {} }
             // 停止朗读
@@ -1157,10 +1262,12 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             generatedLink, autoSaveStatus, autoSaveStatusShow,
             processingMode, aiTasks, currentAITask, aiProcessing,
             isListening, isReading,
+            showEnvelope, envelopePhase,
             styles, wordCount, wordCountStatus, isLoggedIn,
             onClear, onStyleSelect, onGenerateLink, onCopyLink, onOpenLink, onCopyText,
             onPrint, onExportJSON, onExportText, onExportImage, onExportHTML,
             onAITask, onVoiceInput, onReadAloud, onLogin, onLogout,
+            playEnvelopeAnimation, closeEnvelope,
             useTemplate, useHistoryItem, generateLinkFromHistory, deleteHistoryItem, onClearHistory
         };
     },
@@ -1230,6 +1337,14 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                 @close="showUserModal = false"
                 @login="onLogin"
                 @logout="onLogout"
+            />
+            <envelope
+                :show="showEnvelope"
+                :style-key="currentStyle"
+                :style-name="styles.find(s => s.key === currentStyle)?.name || ''"
+                :content="currentTransformed"
+                :animation-phase="envelopePhase"
+                @close="closeEnvelope"
             />
             <toast :show="showToast" :message="toastMessage" :type="toastType" />
         </div>

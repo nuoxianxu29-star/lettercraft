@@ -1711,3 +1711,441 @@ body {
     border-bottom: 1px solid var(--color-border);
     background: var(--color-paper);
 }
+
+/* ============================================
+   Envelope Animation System v1.0
+   信封飞入 → 封口 → 翻转 → 打开 → 信纸滑出
+   ============================================ */
+
+/* 信封容器 */
+.envelope-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 信封主体 */
+.envelope {
+    position: relative;
+    width: 400px;
+    height: 280px;
+    perspective: 1000px;
+    transform-style: preserve-3d;
+}
+
+/* 信封飞入动画 */
+.envelope.fly-in {
+    animation: envelopeFlyIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes envelopeFlyIn {
+    from {
+        transform: translateY(-100vh) rotateX(20deg) scale(0.5);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) rotateX(0) scale(1);
+        opacity: 1;
+    }
+}
+
+/* 信封翻转动画 */
+.envelope.flip {
+    animation: envelopeFlip 0.5s ease 0.6s forwards;
+}
+
+@keyframes envelopeFlip {
+    from { transform: rotateY(0); }
+    to { transform: rotateY(180deg); }
+}
+
+/* 信封正面 */
+.envelope-front {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: var(--envelope-color, #f5f5f5);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    backface-visibility: hidden;
+}
+
+/* 信封背面 */
+.envelope-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: var(--envelope-color, #f5f5f5);
+    border-radius: 12px;
+    transform: rotateY(180deg);
+    backface-visibility: hidden;
+    overflow: hidden;
+}
+
+/* 信封封口（三角形盖子） */
+.envelope-flap {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 140px;
+    background: linear-gradient(135deg, var(--envelope-color, #f5f5f5) 0%, rgba(0,0,0,0.1) 100%);
+    transform-origin: top center;
+    clip-path: polygon(0 0, 50% 100%, 100% 0);
+    transition: transform 0.5s ease;
+    z-index: 10;
+}
+
+/* 封口打开动画 */
+.envelope-flap.open {
+    transform: rotateX(-180deg);
+}
+
+/* 封口密封元素 */
+.envelope-seal {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--seal-color, #c41e3a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 5;
+}
+
+/* 封蜡印章效果 */
+.envelope-seal.wax::before {
+    content: '封';
+    font-family: var(--font-display);
+    font-weight: bold;
+}
+
+.envelope-seal.stamp::before {
+    content: '✉';
+}
+
+.envelope-seal.sticker::before {
+    content: '♡';
+}
+
+.envelope-seal.chinese-wax::before {
+    content: '印';
+    font-family: var(--font-display);
+}
+
+.envelope-seal.heart::before {
+    content: '♥';
+}
+
+/* 信封装饰 */
+.envelope-decoration {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    height: 40px;
+    opacity: 0.3;
+}
+
+/* 龙纹装饰 */
+.envelope-decoration.dragon-cloud {
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 40'%3E%3Cpath d='M10 20 Q30 5, 50 20 T90 20 T130 20 T170 20' fill='none' stroke='%23c41e3a' stroke-width='2'/%3E%3C/svg%3E") repeat-x;
+}
+
+/* 花纹水印 */
+.envelope-decoration.flower-watermark {
+    background: radial-gradient(circle at 20% 50%, rgba(139, 94, 60, 0.2) 2px, transparent 2px),
+                radial-gradient(circle at 80% 50%, rgba(139, 94, 60, 0.2) 2px, transparent 2px);
+    background-size: 20px 20px;
+}
+
+/* 信纸 */
+.envelope-letter {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    height: 95%;
+    background: var(--color-paper);
+    border-radius: 8px;
+    padding: 30px 25px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    z-index: 3;
+    opacity: 0;
+}
+
+/* 信纸滑出动画 */
+.envelope-letter.slide-out {
+    animation: letterSlideOut 0.8s ease forwards;
+}
+
+@keyframes letterSlideOut {
+    from {
+        transform: translate(-50%, -50%) translateY(0);
+        opacity: 0;
+    }
+    50% {
+        transform: translate(-50%, -50%) translateY(-120px);
+        opacity: 1;
+    }
+    to {
+        transform: translate(-50%, -50%) translateY(-280px);
+        opacity: 1;
+    }
+}
+
+/* 信纸内容 */
+.envelope-letter-content {
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--color-text);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* 信纸头部 */
+.envelope-letter-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.envelope-letter-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-display);
+    font-size: 16px;
+    color: var(--color-primary-dark);
+}
+
+.envelope-letter-badge {
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 12px;
+    background: var(--color-bg-warm);
+    color: var(--color-primary);
+}
+
+/* 信纸尾部 */
+.envelope-letter-footer {
+    margin-top: 20px;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-border);
+    font-size: 12px;
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+/* ============================================
+   风格特定信封样式
+   ============================================ */
+
+/* 古风信封 */
+.envelope.classical .envelope-front,
+.envelope.classical .envelope-back {
+    background: #f8f4e8;
+    border: 2px solid #c41e3a;
+}
+
+.envelope.classical .envelope-flap {
+    background: linear-gradient(180deg, #f8f4e8 0%, #e8dcc8 100%);
+    border-bottom: 2px solid #c41e3a;
+}
+
+/* 可爱信封 */
+.envelope.cute .envelope-front,
+.envelope.cute .envelope-back {
+    background: linear-gradient(135deg, #fff0f5 0%, #ffe4ec 100%);
+    border-radius: 20px;
+}
+
+.envelope.cute .envelope-flap {
+    clip-path: polygon(0 0, 30% 60%, 50% 100%, 70% 60%, 100% 0);
+    background: linear-gradient(180deg, #fff0f5 0%, #ffb6c1 100%);
+}
+
+/* 赛博朋克信封 */
+.envelope.cyberpunk .envelope-front,
+.envelope.cyberpunk .envelope-back {
+    background: #1a1a2e;
+    border: 1px solid #00ff88;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3), 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.envelope.cyberpunk .envelope-flap {
+    background: #1a1a2e;
+    border-bottom: 1px solid #00ff88;
+}
+
+.envelope.cyberpunk .envelope-seal {
+    background: transparent;
+    border: 2px solid #00ff88;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+/* 正式公文信封 */
+.envelope.official .envelope-front,
+.envelope.official .envelope-back {
+    background: #f0f0f0;
+    border-top: 4px solid #cc0000;
+}
+
+.envelope.official .envelope-flap {
+    background: #f0f0f0;
+    border-bottom: 1px solid #333;
+}
+
+/* 正式商务信封 */
+.envelope.formal .envelope-front,
+.envelope.formal .envelope-back {
+    background: #f5f5f5;
+    border: 1px solid #333;
+}
+
+.envelope.formal .envelope-seal {
+    background: #333;
+    width: 60px;
+    height: 40px;
+    border-radius: 4px;
+}
+
+.envelope.formal .envelope-seal.stamp::before {
+    content: '';
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='%23f5f5f5'/%3E%3Crect x='5' y='5' width='50' height='30' fill='%23333' rx='2'/%3E%3C/svg%3E");
+}
+
+/* 文艺诗意信封 */
+.envelope.literary .envelope-front,
+.envelope.literary .envelope-back {
+    background: #f5e6d3;
+    border-radius: 8px;
+}
+
+.envelope.literary .envelope-flap {
+    background: linear-gradient(180deg, #f5e6d3 0%, #e8d8c0 100%);
+}
+
+/* 温暖关怀信封 */
+.envelope.warm .envelope-front,
+.envelope.warm .envelope-back {
+    background: #fff5eb;
+    border-radius: 16px;
+}
+
+.envelope.warm .envelope-seal {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+}
+
+/* 简洁高效信封 */
+.envelope.concise .envelope-front,
+.envelope.concise .envelope-back {
+    background: #ffffff;
+    border: 1px solid #4a7c8f;
+}
+
+.envelope.concise .envelope-flap {
+    background: #ffffff;
+    clip-path: polygon(0 0, 100% 0, 100% 40%, 0 40%);
+}
+
+/* 学术严谨信封 */
+.envelope.academic .envelope-front,
+.envelope.academic .envelope-back {
+    background: #e8f4f8;
+    border: 2px solid #1a5f7a;
+}
+
+/* 幽默风趣信封 */
+.envelope.humorous .envelope-front,
+.envelope.humorous .envelope-back {
+    background: linear-gradient(135deg, #ffeb3b 0%, #ffc107 100%);
+    border-radius: 8px;
+}
+
+/* 轻松友好信封 */
+.envelope.casual .envelope-front,
+.envelope.casual .envelope-back {
+    background: #ffe4c4;
+    border-radius: 12px;
+}
+
+/* ============================================
+   移动端适配
+   ============================================ */
+
+@media (max-width: 480px) {
+    .envelope {
+        width: 320px;
+        height: 220px;
+    }
+    
+    .envelope-flap {
+        height: 110px;
+    }
+    
+    .envelope-seal {
+        width: 40px;
+        height: 40px;
+        top: 60px;
+    }
+    
+    .envelope-letter {
+        padding: 20px 18px;
+    }
+    
+    .envelope-letter-content {
+        font-size: 13px;
+    }
+}
+
+/* ============================================
+   动画序列控制
+   ============================================ */
+
+/* 动画阶段标记 */
+.envelope.phase-1 { animation: envelopeFlyIn 0.6s ease forwards; }
+.envelope.phase-2 { animation: envelopeFlip 0.5s ease forwards; }
+.envelope.phase-3 .envelope-flap { transform: rotateX(-180deg); transition: transform 0.5s ease; }
+.envelope.phase-4 .envelope-letter { animation: letterSlideOut 0.8s ease forwards; }
+
+/* 最终展示状态 */
+.envelope.final {
+    transform: none;
+}
+
+.envelope.final .envelope-flap {
+    transform: rotateX(-180deg);
+}
+
+.envelope.final .envelope-letter {
+    transform: translate(-50%, -50%) translateY(-280px);
+    opacity: 1;
+}
