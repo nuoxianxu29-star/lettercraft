@@ -378,8 +378,9 @@ const EditorPanelComponent = {
         autoSaveStatus: String,
         autoSaveStatusShow: Boolean,
         userName: String,
+        isListening: Boolean,
     },
-    emits: ['update:content', 'clear', 'template', 'history', 'user'],
+    emits: ['update:content', 'clear', 'template', 'history', 'user', 'voice-input'],
     methods: {
         onInput(event) {
             this.$emit('update:content', event.target.value);
@@ -396,6 +397,9 @@ const EditorPanelComponent = {
                     </div>
                 </div>
                 <div class="header-actions">
+                    <button class="btn-icon" :class="{ listening: isListening }" title="语音输入" aria-label="语音输入" @click="$emit('voice-input')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0014 0"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+                    </button>
                     <button class="btn-icon" title="用户" aria-label="用户设置" @click="$emit('user')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     </button>
@@ -441,8 +445,9 @@ const PreviewPanelComponent = {
         aiTasks: { type: Array, default: () => [] },
         currentAITask: { type: String, default: '' },
         aiProcessing: { type: Boolean, default: false },
+        isReading: { type: Boolean, default: false },
     },
-    emits: ['select-style', 'generate', 'copy', 'print', 'export-pdf', 'export-image', 'update:processing-mode', 'ai-task'],
+    emits: ['select-style', 'generate', 'copy', 'print', 'export-pdf', 'export-image', 'export-html', 'update:processing-mode', 'ai-task', 'read-aloud'],
     computed: {
         styleName() {
             const style = this.styles.find(s => s.key === this.currentStyle);
@@ -564,6 +569,10 @@ const PreviewPanelComponent = {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                     复制
                 </button>
+                <button class="btn-secondary btn-read-aloud" :class="{ reading: isReading }" aria-label="朗读" @click="$emit('read-aloud')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07"/><path d="M19.07 4.93a10 10 0 010 14.14"/></svg>
+                    朗读
+                </button>
             </div>
         </section>
     `
@@ -612,6 +621,12 @@ const app = createApp({
         const processingMode = ref('style');
         const currentAITask = ref('');
         const aiProcessing = ref(false);
+
+        // 语音相关状态
+        const isListening = ref(false);
+        const isReading = ref(false);
+        let recognition = null;
+        let speechSynth = null;
 
         // Timers
         let autoSaveTimer = null;
@@ -686,6 +701,114 @@ const app = createApp({
             autoSaveStatusShow.value = true;
             clearTimeout(statusTimer);
             statusTimer = setTimeout(() => { autoSaveStatusShow.value = false; }, 2000);
+        }
+
+        // ===== 语音输入 (Web Speech API) =====
+        function onVoiceInput() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                showToastMsg('当前浏览器不支持语音输入', 'error');
+                return;
+            }
+
+            if (isListening.value) {
+                // 停止监听
+                if (recognition) { try { recognition.stop(); } catch(e) {} }
+                isListening.value = false;
+                return;
+            }
+
+            try {
+                recognition = new SpeechRecognition();
+                recognition.lang = 'zh-CN';
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.maxAlternatives = 1;
+
+                recognition.onresult = (event) => {
+                    let transcript = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        transcript += event.results[i][0].transcript;
+                    }
+                    if (transcript) {
+                        content.value = (content.value + transcript).trim();
+                    }
+                };
+
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    isListening.value = false;
+                    if (event.error !== 'no-speech') {
+                        showToastMsg('语音识别错误: ' + event.error, 'error');
+                    }
+                };
+
+                recognition.onend = () => {
+                    isListening.value = false;
+                };
+
+                recognition.start();
+                isListening.value = true;
+                showToastMsg('语音输入已启动，请说话...', 'success');
+            } catch (e) {
+                console.error('Speech recognition failed:', e);
+                showToastMsg('语音识别启动失败', 'error');
+            }
+        }
+
+        // ===== 文本朗读 (Web Speech API) =====
+        function onReadAloud() {
+            if (!currentTransformed.value) {
+                showToastMsg('没有可朗读的内容', 'warning');
+                return;
+            }
+
+            if (isReading.value) {
+                // 停止朗读
+                window.speechSynthesis && window.speechSynthesis.cancel();
+                isReading.value = false;
+                return;
+            }
+
+            try {
+                speechSynth = new SpeechSynthesisUtterance(currentTransformed.value);
+                speechSynth.lang = 'zh-CN';
+                speechSynth.rate = 1.0;
+                speechSynth.pitch = 1.0;
+
+                speechSynth.onend = () => { isReading.value = false; };
+                speechSynth.onerror = () => {
+                    isReading.value = false;
+                    showToastMsg('朗读出错', 'error');
+                };
+
+                window.speechSynthesis.speak(speechSynth);
+                isReading.value = true;
+                showToastMsg('正在朗读...', 'success');
+            } catch (e) {
+                console.error('Speech synthesis failed:', e);
+                showToastMsg('朗读启动失败', 'error');
+            }
+        }
+
+        // ===== AI 打字机流式效果 =====
+        function typewriterEffect(text, delay = 30) {
+            return new Promise((resolve) => {
+                let index = 0;
+                currentTransformed.value = '';
+
+                function type() {
+                    if (index < text.length) {
+                        currentTransformed.value += text[index];
+                        index++;
+                        setTimeout(type, delay);
+                    } else {
+                        currentTransformed.value = text;
+                        resolve();
+                    }
+                }
+                type();
+            });
         }
 
         // ===== 用户系统逻辑 =====
@@ -764,8 +887,9 @@ const app = createApp({
                         styleKey: currentStyle.value,
                         styleName: styles.value.find(s => s.key === currentStyle.value)?.name || '',
                     });
-                    currentTransformed.value = result;
+                    // 打字机效果逐字输出
                     currentOriginal.value = text;
+                    await typewriterEffect(result);
                     // 同步到 store
                     store.updateTransform(currentStyle.value || 'ai', result, text);
                     showToastMsg('AI 处理完成', 'success');
@@ -1021,6 +1145,10 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             clearTimeout(autoSaveTimer);
             clearTimeout(toastTimer);
             clearTimeout(statusTimer);
+            // 停止语音识别
+            if (recognition) { try { recognition.stop(); } catch(e) {} }
+            // 停止朗读
+            window.speechSynthesis && window.speechSynthesis.cancel();
         });
 
         return {
@@ -1028,10 +1156,11 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             showLinkModal, showTemplateModal, showHistoryModal, showUserModal, showToast, toastMessage, toastType,
             generatedLink, autoSaveStatus, autoSaveStatusShow,
             processingMode, aiTasks, currentAITask, aiProcessing,
+            isListening, isReading,
             styles, wordCount, wordCountStatus, isLoggedIn,
             onClear, onStyleSelect, onGenerateLink, onCopyLink, onOpenLink, onCopyText,
             onPrint, onExportJSON, onExportText, onExportImage, onExportHTML,
-            onAITask, onLogin, onLogout,
+            onAITask, onVoiceInput, onReadAloud, onLogin, onLogout,
             useTemplate, useHistoryItem, generateLinkFromHistory, deleteHistoryItem, onClearHistory
         };
     },
@@ -1044,10 +1173,12 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                 :auto-save-status="autoSaveStatus"
                 :auto-save-status-show="autoSaveStatusShow"
                 :user-name="userName"
+                :is-listening="isListening"
                 @clear="onClear"
                 @template="showTemplateModal = true"
                 @history="showHistoryModal = true"
                 @user="showUserModal = true"
+                @voice-input="onVoiceInput"
             />
             <preview-panel
                 :current-style="currentStyle"
@@ -1057,6 +1188,7 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                 :ai-tasks="aiTasks"
                 :current-ai-task="currentAITask"
                 :ai-processing="aiProcessing"
+                :is-reading="isReading"
                 @select-style="onStyleSelect"
                 @generate="onGenerateLink"
                 @copy="onCopyText"
@@ -1066,6 +1198,7 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                 @export-html="onExportHTML"
                 @update:processing-mode="processingMode = $event"
                 @ai-task="onAITask"
+                @read-aloud="onReadAloud"
             />
             <link-modal
                 :show="showLinkModal"

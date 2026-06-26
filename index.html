@@ -3,17 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="TextCraft - 智能文本生成与转换系统，支持多模板智能文本生成、语义转换引擎、用户级历史记录系统">
+    <meta name="description" content="TextCraft - 智能文本生成与转换系统，支持AI处理、语音输入、多模板、离线使用">
     <meta name="theme-color" content="#8b5e3c">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="TextCraft">
     <meta property="og:type" content="website">
     <meta property="og:title" content="TextCraft - 智能文本处理系统">
-    <meta property="og:description" content="多模板智能文本生成，基于规则的语义转换引擎，用户级历史记录系统">
+    <meta property="og:description" content="多模板智能文本生成 | AI语义转换引擎 | 语音输入 | 可安装PWA | 离线可用">
     <meta property="og:locale" content="zh_CN">
     <title>TextCraft - 智能文本处理系统</title>
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%238b5e3c'/%3E%3Ctext x='96' y='140' font-size='120' text-anchor='middle' fill='white'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;400;500;600;700&family=ZCOOL+XiaoWei&family=ZCOOL+KuaiLe&family=Long+Cang&display=swap" rel="stylesheet">
@@ -40,5 +43,18 @@
     
     <!-- App Layer -->
     <script src="js/core/app.js"></script>
+    
+    <!-- Service Worker Registration (PWA) -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').then(reg => {
+                    console.log('SW registered:', reg.scope);
+                }).catch(err => {
+                    console.warn('SW registration failed:', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>
