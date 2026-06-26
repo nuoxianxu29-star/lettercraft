@@ -16,7 +16,7 @@
 (function initLetterView() {
     const params = new URLSearchParams(window.location.search);
     const letterData = params.get('letter');
-    
+
     if (!letterData) return;
 
     function escapeHtml(text) {
@@ -633,19 +633,31 @@ const EditorPanelComponent = {
     `
 };
 
-// 预览面板组件（含 AI 模式切换）
+// 预览面板组件（含 AI 模式切换 + 平台模式）
 const PreviewPanelComponent = {
     props: {
         currentStyle: String,
         currentTransformed: String,
         styles: Array,
         processingMode: { type: String, default: 'style' },
+        platformMode: { type: String, default: 'text-gen' },
         aiTasks: { type: Array, default: () => [] },
         currentAITask: { type: String, default: '' },
         aiProcessing: { type: Boolean, default: false },
         isReading: { type: Boolean, default: false },
     },
-    emits: ['select-style', 'generate', 'copy', 'print', 'export-pdf', 'export-image', 'export-html', 'update:processing-mode', 'ai-task', 'read-aloud'],
+    emits: ['select-style', 'generate', 'copy', 'print', 'export-pdf', 'export-image', 'export-html', 'update:processing-mode', 'update:platform-mode', 'ai-task', 'read-aloud'],
+    data() {
+        return {
+            platforms: [
+                { key: 'text-gen', name: '文本生成', icon: '📝' },
+                { key: 'email-gen', name: '邮件生成', icon: '📧' },
+                { key: 'text-polish', name: '文本润色', icon: '✨' },
+                { key: 'academic-summary', name: '学术摘要', icon: '📚' },
+                { key: 'creative-writing', name: '创意写作', icon: '🎨' },
+            ],
+        };
+    },
     computed: {
         styleName() {
             const style = this.styles.find(s => s.key === this.currentStyle);
@@ -666,6 +678,10 @@ const PreviewPanelComponent = {
             if (!this.currentAITask) return '';
             const task = this.aiTasks.find(t => t.key === this.currentAITask);
             return task ? task.name : this.currentAITask;
+        },
+        currentPlatformName() {
+            const p = this.platforms.find(p => p.key === this.platformMode);
+            return p ? p.name : '文本生成';
         }
     },
     methods: {
@@ -676,12 +692,22 @@ const PreviewPanelComponent = {
         },
         switchMode(mode) {
             this.$emit('update:processing-mode', mode);
+        },
+        switchPlatform(key) {
+            this.$emit('update:platform-mode', key);
         }
     },
     template: `
         <section class="preview-panel" aria-label="输出区域">
+            <!-- 平台模式 Tab 导航 -->
+            <div class="platform-tabs">
+                <button v-for="p in platforms" :key="p.key" class="platform-tab-btn" :class="{ active: p.key === platformMode }" @click="switchPlatform(p.key)">
+                    <span class="platform-tab-icon">{{ p.icon }}</span>
+                    <span class="platform-tab-name">{{ p.name }}</span>
+                </button>
+            </div>
             <div class="panel-header">
-                <h2>处理风格</h2>
+                <h2>{{ currentPlatformName }}</h2>
                 <div class="panel-header-actions">
                     <button class="btn-icon" title="导出 HTML" aria-label="导出 HTML" @click="$emit('export-html')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -818,7 +844,7 @@ const app = createApp({
         const generatedLink = ref('');
         const autoSaveStatus = ref('');
         const autoSaveStatusShow = ref(false);
-        
+
         // 侧边栏状态
         const activeNav = ref('editor'); // editor | history | templates | settings
         const sidebarCollapsed = ref(false);
@@ -843,6 +869,7 @@ const app = createApp({
 
         // AI 处理相关状态
         const processingMode = ref('style');
+        const platformMode = ref('text-gen');
         const currentAITask = ref('');
         const aiProcessing = ref(false);
 
@@ -937,7 +964,7 @@ const app = createApp({
 
             if (isListening.value) {
                 // 停止监听
-                if (recognition) { try { recognition.stop(); } catch(e) {} }
+                if (recognition) { try { recognition.stop(); } catch (e) { } }
                 isListening.value = false;
                 return;
             }
@@ -1271,8 +1298,8 @@ const app = createApp({
             if (typeof ExportService !== 'undefined') {
                 ExportService.exportJSON(letterObj);
             } else {
-                const json = typeof TransformerService !== 'undefined' 
-                    ? TransformerService.exportJSON(letterObj) 
+                const json = typeof TransformerService !== 'undefined'
+                    ? TransformerService.exportJSON(letterObj)
                     : JSON.stringify(letterObj, null, 2);
                 downloadFile(json, 'textcraft-export.json', 'application/json');
             }
@@ -1461,7 +1488,7 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             clearTimeout(statusTimer);
             clearTimeout(envelopeTimer);
             // 停止语音识别
-            if (recognition) { try { recognition.stop(); } catch(e) {} }
+            if (recognition) { try { recognition.stop(); } catch (e) { } }
             // 停止朗读
             window.speechSynthesis && window.speechSynthesis.cancel();
         });
@@ -1470,7 +1497,7 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             content, currentStyle, currentTransformed, currentOriginal, myLetters, userName,
             showLinkModal, showTemplateModal, showHistoryModal, showUserModal, showSettingsModal, showToast, toastMessage, toastType,
             generatedLink, autoSaveStatus, autoSaveStatusShow,
-            processingMode, aiTasks, currentAITask, aiProcessing,
+            processingMode, platformMode, aiTasks, currentAITask, aiProcessing,
             isListening, isReading,
             showEnvelope, envelopePhase,
             activeNav, sidebarCollapsed,
@@ -1515,6 +1542,7 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                     :current-transformed="currentTransformed"
                     :styles="styles"
                     :processing-mode="processingMode"
+                    :platform-mode="platformMode"
                     :ai-tasks="aiTasks"
                     :current-ai-task="currentAITask"
                     :ai-processing="aiProcessing"
@@ -1527,6 +1555,7 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                     @export-image="onExportImage"
                     @export-html="onExportHTML"
                     @update:processing-mode="processingMode = $event"
+                    @update:platform-mode="platformMode = $event"
                     @ai-task="onAITask"
                     @read-aloud="onReadAloud"
                 />
