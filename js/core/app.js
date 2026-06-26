@@ -24,22 +24,36 @@
         div.textContent = text;
         return div.innerHTML;
     }
+})();
 
-    function getEnvelopeConfig(styleKey) {
-        const configs = {
-            formal: { envelopeColor: '#d4c8b8', sealType: 'stamp', sealColor: '#8b5e3c', decoration: '' },
-            casual: { envelopeColor: '#f5e0d0', sealType: 'heart', sealColor: '#d4856a', decoration: 'flower-watermark' },
-            literary: { envelopeColor: '#e8dcc8', sealType: 'wax', sealColor: '#7b68a8', decoration: 'flower-watermark' },
-            concise: { envelopeColor: '#d0dce0', sealType: 'stamp', sealColor: '#4a7c8f', decoration: '' },
-            warm: { envelopeColor: '#f0d8c8', sealType: 'heart', sealColor: '#c47a5a', decoration: 'flower-watermark' },
-            classical: { envelopeColor: '#f0e4c0', sealType: 'chinese-wax', sealColor: '#8b6914', decoration: 'dragon-cloud' },
-            humorous: { envelopeColor: '#f0e0c8', sealType: 'sticker', sealColor: '#e8734a', decoration: '' },
-            academic: { envelopeColor: '#d0d8e0', sealType: 'stamp', sealColor: '#3a506b', decoration: '' },
-            cute: { envelopeColor: '#ffe0ec', sealType: 'heart', sealColor: '#ff69b4', decoration: '' },
-            cyberpunk: { envelopeColor: '#1a1a2e', sealType: 'wax', sealColor: '#00ff88', decoration: '' },
-            classicalTrans: { envelopeColor: '#f0e4c0', sealType: 'chinese-wax', sealColor: '#8b6914', decoration: 'dragon-cloud' },
-        };
-        return configs[styleKey] || { envelopeColor: '#f5f5f5', sealType: 'wax', sealColor: '#c41e3a', decoration: '' };
+// 全局信封配置（供 Vue EnvelopeComponent 和 initLetterView 共用）
+window.getEnvelopeConfig = function getEnvelopeConfig(styleKey) {
+    const configs = {
+        formal: { envelopeColor: '#d4c8b8', sealType: 'stamp', sealColor: '#8b5e3c', decoration: '' },
+        casual: { envelopeColor: '#f5e0d0', sealType: 'heart', sealColor: '#d4856a', decoration: 'flower-watermark' },
+        literary: { envelopeColor: '#e8dcc8', sealType: 'wax', sealColor: '#7b68a8', decoration: 'flower-watermark' },
+        concise: { envelopeColor: '#d0dce0', sealType: 'stamp', sealColor: '#4a7c8f', decoration: '' },
+        warm: { envelopeColor: '#f0d8c8', sealType: 'heart', sealColor: '#c47a5a', decoration: 'flower-watermark' },
+        classical: { envelopeColor: '#f0e4c0', sealType: 'chinese-wax', sealColor: '#8b6914', decoration: 'dragon-cloud' },
+        humorous: { envelopeColor: '#f0e0c8', sealType: 'sticker', sealColor: '#e8734a', decoration: '' },
+        academic: { envelopeColor: '#d0d8e0', sealType: 'stamp', sealColor: '#3a506b', decoration: '' },
+        cute: { envelopeColor: '#ffe0ec', sealType: 'heart', sealColor: '#ff69b4', decoration: '' },
+        cyberpunk: { envelopeColor: '#1a1a2e', sealType: 'wax', sealColor: '#00ff88', decoration: '' },
+        classicalTrans: { envelopeColor: '#f0e4c0', sealType: 'chinese-wax', sealColor: '#8b6914', decoration: 'dragon-cloud' },
+    };
+    return configs[styleKey] || { envelopeColor: '#f5f5f5', sealType: 'wax', sealColor: '#c41e3a', decoration: '' };
+};
+
+// 实际解析和执行分享视图
+(function initLetterView() {
+    const params = new URLSearchParams(window.location.search);
+    const letterData = params.get('letter');
+    if (!letterData) return;
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     try {
@@ -48,22 +62,21 @@
         const letter = JSON.parse(json);
 
         if (letter && letter.content && letter.styleName) {
+            window._letterViewMode = true;
+
             document.addEventListener('DOMContentLoaded', () => {
                 const styleKey = letter.styleKey || '';
-                const cfg = getEnvelopeConfig(styleKey);
+                const cfg = window.getEnvelopeConfig(styleKey);
 
-                // 先渲染信封动画
                 document.getElementById('app').innerHTML = `
                     <div class="letter-view-page">
                         <div class="letter-view-envelope-wrapper">
                             <div class="envelope" id="share-envelope" data-style="${styleKey}"
                                  style="--envelope-color: ${cfg.envelopeColor}; --seal-color: ${cfg.sealColor}">
-                                <!-- 信封正面 -->
                                 <div class="envelope-front">
                                     <div class="envelope-flap"></div>
                                     <div class="envelope-seal ${cfg.sealType}"></div>
                                 </div>
-                                <!-- 信封背面 / 信纸 -->
                                 <div class="envelope-back">
                                     <div class="envelope-letter">
                                         <div class="envelope-letter-header">
@@ -82,39 +95,29 @@
                     </div>
                 `;
 
-                // 播放动画序列
                 const el = document.getElementById('share-envelope');
                 if (!el) return;
 
-                // Phase 1: 飞入 (0.6s)
                 el.classList.add('phase-1');
-
-                // Phase 2: 翻转 (0.5s + 0.6s delay)
                 setTimeout(() => {
                     el.classList.remove('phase-1');
                     el.classList.add('phase-2');
                 }, 700);
-
-                // Phase 3: 信封打开 (0.4s + 1.3s)
                 setTimeout(() => {
                     el.classList.add('phase-3');
                 }, 1400);
-
-                // Phase 4: 信纸滑出 (0.8s + 1.8s)
                 setTimeout(() => {
                     el.classList.add('phase-4');
                 }, 1900);
-
-                // Phase 5: 完成 (2.8s)
                 setTimeout(() => {
                     el.classList.add('final');
                 }, 2800);
             });
-            window._letterViewMode = true;
         } else {
             throw new Error('Invalid letter data');
         }
     } catch (e) {
+        window._letterViewMode = true;
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('app').innerHTML = `
                 <div class="letter-view-page">
@@ -127,7 +130,6 @@
                 </div>
             `;
         });
-        window._letterViewMode = true;
     }
 })();
 
