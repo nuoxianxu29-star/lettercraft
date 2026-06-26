@@ -3091,7 +3091,51 @@ body {
     transform: rotateX(-180deg);
 }
 
-.envelope.final .envelope-letter {
-    transform: translate(-50%, -50%) translateY(-280px);
+/* 分享页信封最终状态：信封平躺，信纸展开 */
+.letter-view-envelope-wrapper .envelope.final {
+    transform: none;
+    width: 100%;
+    max-width: 580px;
+    height: auto;
+    min-height: 200px;
+    background: transparent;
+}
+
+.letter-view-envelope-wrapper .envelope.final .envelope-flap {
+    transform: rotateX(-180deg);
+    display: none;
+}
+
+.letter-view-envelope-wrapper .envelope.final .envelope-front {
+    display: none;
+}
+
+.letter-view-envelope-wrapper .envelope.final .envelope-back {
+    position: relative;
+    backface-visibility: visible;
+    transform: none;
+    background: transparent;
+    height: auto;
+    min-height: 300px;
+}
+
+.letter-view-envelope-wrapper .envelope.final .envelope-letter {
+    position: relative;
+    top: 0;
+    left: 0;
+    transform: none;
+    width: 100%;
+    height: auto;
     opacity: 1;
+    max-height: none;
+    overflow: visible;
+    padding: 40px;
+    background: #fffef9;
+    border-radius: 16px;
+    box-shadow: 0 8px 40px rgba(139, 94, 60, 0.15);
+    border: 1px solid #e0dcd3;
+}
+
+.letter-view-envelope-wrapper .envelope.final .envelope-letter-content {
+    min-height: 150px;
 }
