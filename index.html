@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LetterCraft - 风格信件转换器</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;400;500;600;700&family=ZCOOL+XiaoWei&family=ZCOOL+KuaiLe&family=Long+Cang&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 主应用界面 -->
+    <div class="app-container" id="app-container">
+        <!-- 左侧：写信区 -->
+        <section class="write-panel">
+            <div class="panel-header">
+                <div class="logo">
+                    <span class="logo-icon">✉</span>
+                    <h1>LetterCraft</h1>
+                </div>
+                <button class="btn-icon" id="btn-clear" title="清空">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="editor-wrapper">
+                <div class="letter-paper">
+                    <textarea id="letter-input" placeholder="在这里写下你的信件内容...&#10;&#10;例如：&#10;亲爱的朋友：&#10;&#10;你好！最近过得怎么样？&#10;&#10;祝好&#10;你的名字"></textarea>
+                </div>
+            </div>
+
+            <div class="editor-footer">
+                <span class="word-count" id="word-count">0 字</span>
+            </div>
+        </section>
+
+        <!-- 右侧：风格选择 + 预览 -->
+        <section class="preview-panel">
+            <div class="panel-header">
+                <h2>选择风格</h2>
+            </div>
+
+            <!-- 风格选择区 -->
+            <div class="style-grid" id="style-grid">
+                <!-- 由 JS 动态生成 -->
+            </div>
+
+            <!-- 预览区（与最终分享效果完全一致） -->
+            <div class="preview-area" id="preview-area">
+                <div class="empty-preview">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <p>点击上方风格按钮，预览信件效果</p>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="preview-actions" id="preview-actions" style="display: none;">
+                <button class="btn-primary btn-generate" id="btn-generate">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                        <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                    </svg>
+                    生成分享链接
+                </button>
+                <button class="btn-secondary btn-copy" id="btn-copy">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                    </svg>
+                    复制文字
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <!-- 链接生成弹窗 -->
+    <div class="modal-overlay" id="link-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>✨ 分享链接已生成</h3>
+                <button class="btn-icon modal-close" id="modal-close">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="link-info">
+                    <p>把链接发给对方，ta 就能看到这封精美的信了</p>
+                </div>
+                <div class="link-input-group">
+                    <input type="text" id="generated-link" readonly>
+                    <button class="btn-primary" id="btn-copy-link">复制</button>
+                </div>
+                <div class="link-tips">
+                    <p>💡 链接包含完整信件数据，对方打开即可看到</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script src="js/styles.js"></script>
+    <script src="js/transformer.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
