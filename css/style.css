@@ -579,6 +579,30 @@ body {
 }
 .preview-letter-card.official .preview-letter-style-badge { background: #f0f0f0; color: #333; }
 
+.preview-letter-card.classical-trans {
+    background: #f8f0e0;
+    border-color: #d4b896;
+    border-radius: 16px;
+}
+.preview-letter-card.classical-trans::before {
+    background: linear-gradient(90deg, #8b6914, #c4a060, #8b6914);
+}
+.preview-letter-card.classical-trans .preview-letter-header { border-color: #d4c0a0; }
+.preview-letter-card.classical-trans .preview-letter-logo { color: #6b4914; }
+.preview-letter-card.classical-trans .preview-letter-content {
+    color: #4a3014;
+    font-family: 'Long Cang', cursive;
+    font-size: 18px;
+    line-height: 2.2;
+    background: transparent;
+}
+.preview-letter-card.classical-trans .preview-letter-style-badge { 
+    background: #f0e0c0; 
+    color: #6b4914; 
+    font-family: 'ZCOOL XiaoWei', serif;
+}
+.preview-letter-card.classical-trans .preview-letter-footer { border-color: #d4c0a0; }
+
 /* ============================================
    Preview Actions
    ============================================ */
@@ -2095,6 +2119,22 @@ body {
 .envelope.casual .envelope-back {
     background: #ffe4c4;
     border-radius: 12px;
+}
+
+/* 文言文信封 */
+.envelope.classical-trans .envelope-front,
+.envelope.classical-trans .envelope-back {
+    background: #f8f0e0;
+    border: 2px solid #8b0000;
+    border-radius: 8px;
+}
+.envelope.classical-trans .envelope-flap {
+    background: linear-gradient(180deg, #f8f0e0 0%, #e8d8c0 100%);
+    border-bottom: 2px solid #8b0000;
+}
+.envelope.classical-trans .envelope-seal {
+    background: radial-gradient(circle, #8b0000 60%, #a02020 100%);
+    box-shadow: 0 4px 15px rgba(139, 0, 0, 0.4);
 }
 
 /* ============================================
