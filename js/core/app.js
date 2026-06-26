@@ -13,19 +13,6 @@
  */
 
 // ==================== 信件查看模式（路由优先处理，含信封动画） ====================
-(function initLetterView() {
-    const params = new URLSearchParams(window.location.search);
-    const letterData = params.get('letter');
-
-    if (!letterData) return;
-
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-})();
-
 // 全局信封配置（供 Vue EnvelopeComponent 和 initLetterView 共用）
 window.getEnvelopeConfig = function getEnvelopeConfig(styleKey) {
     const configs = {
