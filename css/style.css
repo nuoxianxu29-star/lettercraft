@@ -1,5 +1,5 @@
 /* ============================================
-   TextCraft v8.0 - AI-Powered Text Processing System
+   TextCraft v9.0 - AI-Powered Text Processing System
    架构：Vue 3 + 模块化前端架构 (Store / Services / Router / UI)
    功能：多模板智能文本生成 / 语义转换引擎 / 用户级历史记录 / 导出 JSON/文本
    ============================================ */
@@ -1498,3 +1498,61 @@ body {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ============================================
+   User Modal Component
+   ============================================ */
+
+/* 用户弹窗 */
+.user-modal .modal { max-width: 420px; }
+.user-info { text-align: center; padding: 20px 0; }
+.user-avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--color-bg-warm); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 28px; color: var(--color-primary); }
+.user-name-display { font-size: 18px; font-weight: 600; color: var(--color-text); margin-bottom: 4px; }
+.user-id { font-size: 12px; color: var(--color-text-muted); }
+.user-login-form { display: flex; flex-direction: column; gap: 12px; }
+.user-login-form input { padding: 10px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font-size: 14px; font-family: var(--font-body); outline: none; transition: border-color var(--transition-fast); }
+.user-login-form input:focus { border-color: var(--color-primary-light); box-shadow: 0 0 0 3px rgba(139, 94, 60, 0.1); }
+.user-login-form .btn-primary { width: 100%; }
+.user-actions { margin-top: 16px; display: flex; gap: 8px; }
+.user-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--color-border); }
+.user-stat { text-align: center; }
+.user-stat-value { font-size: 20px; font-weight: 600; color: var(--color-primary-dark); }
+.user-stat-label { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+
+/* ============================================
+   AI Task Mode
+   ============================================ */
+
+/* AI 模式切换 */
+.mode-switch { display: flex; gap: 4px; padding: 4px; background: var(--color-bg); border-radius: var(--radius-sm); margin-bottom: 8px; }
+.mode-switch-btn { flex: 1; padding: 6px 12px; border: none; background: transparent; color: var(--color-text-muted); font-size: 12px; font-family: var(--font-body); cursor: pointer; border-radius: 4px; transition: all var(--transition-fast); }
+.mode-switch-btn.active { background: var(--color-paper); color: var(--color-primary); font-weight: 600; box-shadow: var(--shadow-sm); }
+.ai-tasks { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
+.ai-task-btn { padding: 6px 14px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-bg); color: var(--color-text-light); font-size: 12px; cursor: pointer; transition: all var(--transition-fast); font-family: var(--font-body); }
+.ai-task-btn:hover { border-color: var(--color-primary-light); color: var(--color-primary); }
+.ai-task-btn.active { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+.ai-processing { text-align: center; padding: 40px 20px; color: var(--color-text-muted); }
+.ai-processing .spinner { display: inline-block; width: 24px; height: 24px; border: 2px solid var(--color-border); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============================================
+   Platform Tabs (Template Modal Upgrade)
+   ============================================ */
+
+/* 平台模式标签 */
+.platform-tabs { display: flex; gap: 6px; padding: 8px 0; margin-bottom: 12px; overflow-x: auto; }
+.platform-tab { display: flex; align-items: center; gap: 4px; padding: 8px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-bg); color: var(--color-text-light); font-size: 13px; cursor: pointer; transition: all var(--transition-fast); white-space: nowrap; font-family: var(--font-body); }
+.platform-tab:hover { border-color: var(--color-primary-light); color: var(--color-primary); }
+.platform-tab.active { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+.platform-tab-icon { font-size: 16px; }
+
+/* ============================================
+   Export Dropdown
+   ============================================ */
+
+/* 导出按钮组 */
+.export-dropdown { position: relative; display: inline-block; }
+.export-menu { position: absolute; top: 100%; right: 0; background: var(--color-paper); border: 1px solid var(--color-border); border-radius: var(--radius-sm); box-shadow: var(--shadow-md); z-index: 100; min-width: 160px; overflow: hidden; }
+.export-menu-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 16px; border: none; background: transparent; color: var(--color-text); font-size: 13px; cursor: pointer; font-family: var(--font-body); transition: background var(--transition-fast); text-align: left; }
+.export-menu-item:hover { background: var(--color-bg-warm); }
+.export-menu-item + .export-menu-item { border-top: 1px solid var(--color-border); }

@@ -1,14 +1,15 @@
 /**
- * 智能文本生成与转换系统 v8.0 - AI-Powered Text Processing System
+ * 智能文本生成与转换系统 v9.0 - AI-Powered Text Processing System
  * 架构：Vue 3 + 模块化前端架构
  * 模块：Store / Services / Router / UI / Components
  * 
  * 功能：
- * - 多模板智能文本生成
+ * - 多模板智能文本生成（多平台模式）
  * - 基于规则的语义转换引擎（可扩展 AI）
- * - 用户级历史记录系统
+ * - AI 任务切换（润色/摘要/扩写/翻译等）
+ * - 用户级历史记录系统（localStorage 模拟）
  * - 分享链接生成与解析
- * - 导出 PDF / 图片 / JSON
+ * - 导出 PDF / 图片 / HTML / JSON
  */
 
 // ==================== 信件查看模式（路由优先处理） ====================
@@ -123,26 +124,144 @@ const LinkModalComponent = {
     `
 };
 
-// 模板弹窗组件
+// 用户弹窗组件
+const UserModalComponent = {
+    props: { show: Boolean, userName: String, isLoggedIn: Boolean },
+    emits: ['close', 'login', 'logout'],
+    data() {
+        return {
+            loginName: ''
+        };
+    },
+    methods: {
+        onLogin() {
+            const name = this.loginName.trim();
+            if (!name) return;
+            this.$emit('login', name);
+            this.loginName = '';
+        }
+    },
+    template: `
+        <div class="modal-overlay" :class="{ show: show }" role="dialog" aria-modal="true" @click.self="$emit('close')">
+            <div class="modal user-modal">
+                <div class="modal-header">
+                    <h3>👤 用户中心</h3>
+                    <button class="btn-icon modal-close" aria-label="关闭" @click="$emit('close')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <template v-if="isLoggedIn">
+                        <div class="user-info">
+                            <div class="user-avatar">{{ userName.charAt(0).toUpperCase() }}</div>
+                            <div class="user-detail">
+                                <div class="user-name">{{ userName }}</div>
+                                <div class="user-status">已登录</div>
+                            </div>
+                        </div>
+                        <div class="user-tip">
+                            <p>💡 历史记录与当前用户关联，切换用户将查看不同的历史记录</p>
+                        </div>
+                        <button class="btn-secondary btn-logout" @click="$emit('logout')">退出登录</button>
+                    </template>
+                    <template v-else>
+                        <div class="user-login-form">
+                            <p class="user-login-hint">输入用户名即可登录（数据保存在本地）</p>
+                            <div class="user-input-group">
+                                <input 
+                                    v-model="loginName" 
+                                    type="text" 
+                                    placeholder="请输入用户名" 
+                                    aria-label="用户名"
+                                    maxlength="20"
+                                    @keydown.enter="onLogin"
+                                >
+                                <button class="btn-primary" :disabled="!loginName.trim()" @click="onLogin">登录</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    `
+};
+
+// 模板弹窗组件（多平台模式升级）
 const TemplateModalComponent = {
     props: { show: Boolean },
     emits: ['close', 'use'],
     data() {
         return {
+            activePlatform: 'text-gen',
             activeCategory: 'all',
-            categories: [
-                { key: 'all', name: '全部' },
-                { key: 'letter', name: '信件' },
-                { key: 'email', name: '邮件' },
-                { key: 'notice', name: '通知' },
-                { key: 'creative', name: '创意' },
-            ]
+            // 平台模式定义
+            platforms: [
+                { key: 'text-gen', name: '文本生成', icon: '📝' },
+                { key: 'email-gen', name: '邮件生成', icon: '📧' },
+                { key: 'text-polish', name: '文本润色', icon: '✨' },
+                { key: 'academic-summary', name: '学术摘要', icon: '📚' },
+                { key: 'creative-writing', name: '创意写作', icon: '🎨' },
+            ],
+            // 平台模式与模板分类映射
+            platformCategoryMap: {
+                'text-gen': ['business', 'personal', 'social'],
+                'email-gen': ['business', 'notice'],
+                'text-polish': ['business', 'academic', 'personal'],
+                'academic-summary': ['academic'],
+                'creative-writing': ['personal', 'social', 'creative'],
+            },
+            // 平台模式对应的分类筛选
+            platformCategories: {
+                'text-gen': [
+                    { key: 'all', name: '全部' },
+                    { key: 'business', name: '商务' },
+                    { key: 'personal', name: '个人' },
+                    { key: 'social', name: '社交' },
+                ],
+                'email-gen': [
+                    { key: 'all', name: '全部' },
+                    { key: 'business', name: '商务' },
+                    { key: 'notice', name: '通知' },
+                ],
+                'text-polish': [
+                    { key: 'all', name: '全部' },
+                    { key: 'business', name: '商务' },
+                    { key: 'academic', name: '学术' },
+                    { key: 'personal', name: '个人' },
+                ],
+                'academic-summary': [
+                    { key: 'all', name: '全部' },
+                    { key: 'academic', name: '学术' },
+                ],
+                'creative-writing': [
+                    { key: 'all', name: '全部' },
+                    { key: 'personal', name: '个人' },
+                    { key: 'social', name: '社交' },
+                    { key: 'creative', name: '创意' },
+                ],
+            }
         };
     },
     computed: {
+        categories() {
+            return this.platformCategories[this.activePlatform] || [{ key: 'all', name: '全部' }];
+        },
         templates() {
             if (typeof getTemplates === 'undefined') return [];
-            return getTemplates(this.activeCategory);
+            // 先根据平台过滤
+            const platformCats = this.platformCategoryMap[this.activePlatform] || [];
+            let filtered = LETTER_TEMPLATES.filter(t => platformCats.includes(t.category));
+            // 再根据分类过滤
+            if (this.activeCategory !== 'all') {
+                filtered = filtered.filter(t => t.category === this.activeCategory);
+            }
+            return filtered;
+        }
+    },
+    watch: {
+        activePlatform() {
+            // 切换平台时重置分类
+            this.activeCategory = 'all';
         }
     },
     methods: {
@@ -166,18 +285,31 @@ const TemplateModalComponent = {
                     </button>
                 </div>
                 <div class="modal-body">
+                    <div class="template-platforms">
+                        <button v-for="p in platforms" :key="p.key" class="template-platform-btn" :class="{ active: p.key === activePlatform }" @click="activePlatform = p.key">
+                            <span class="platform-icon">{{ p.icon }}</span>
+                            <span class="platform-name">{{ p.name }}</span>
+                        </button>
+                    </div>
                     <div class="template-categories">
                         <button v-for="c in categories" :key="c.key" class="template-category-btn" :class="{ active: c.key === activeCategory }" @click="activeCategory = c.key">{{ c.name }}</button>
                     </div>
                     <div class="template-grid">
-                        <div v-for="t in templates" :key="t.id" class="template-card" @click="$emit('use', t.id)">
-                            <div class="template-card-header">
-                                <span class="template-card-title">{{ t.title }}</span>
-                                <span class="template-card-cat">{{ getCategoryName(t.category) }}</span>
+                        <template v-if="templates.length === 0">
+                            <div class="template-empty">
+                                <p>当前平台模式暂无模板</p>
                             </div>
-                            <div class="template-card-preview">{{ escapeHtml(t.preview) }}</div>
-                            <div class="template-card-footer">点击使用 →</div>
-                        </div>
+                        </template>
+                        <template v-else>
+                            <div v-for="t in templates" :key="t.id" class="template-card" @click="$emit('use', t.id)">
+                                <div class="template-card-header">
+                                    <span class="template-card-title">{{ t.title }}</span>
+                                    <span class="template-card-cat">{{ getCategoryName(t.category) }}</span>
+                                </div>
+                                <div class="template-card-preview">{{ escapeHtml(t.preview) }}</div>
+                                <div class="template-card-footer">点击使用 →</div>
+                            </div>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -299,15 +431,18 @@ const EditorPanelComponent = {
     `
 };
 
-// 预览面板组件
+// 预览面板组件（含 AI 模式切换）
 const PreviewPanelComponent = {
     props: {
         currentStyle: String,
         currentTransformed: String,
         styles: Array,
-        processingMode: { type: String, default: 'style' } // style, ai
+        processingMode: { type: String, default: 'style' },
+        aiTasks: { type: Array, default: () => [] },
+        currentAITask: { type: String, default: '' },
+        aiProcessing: { type: Boolean, default: false },
     },
-    emits: ['select-style', 'generate', 'copy', 'print', 'export-pdf', 'export-image'],
+    emits: ['select-style', 'generate', 'copy', 'print', 'export-pdf', 'export-image', 'update:processing-mode', 'ai-task'],
     computed: {
         styleName() {
             const style = this.styles.find(s => s.key === this.currentStyle);
@@ -322,6 +457,12 @@ const PreviewPanelComponent = {
         },
         currentTime() {
             return new Date().toLocaleString('zh-CN');
+        },
+        // 当前 AI 任务名称
+        currentAITaskName() {
+            if (!this.currentAITask) return '';
+            const task = this.aiTasks.find(t => t.key === this.currentAITask);
+            return task ? task.name : this.currentAITask;
         }
     },
     methods: {
@@ -329,6 +470,9 @@ const PreviewPanelComponent = {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        },
+        switchMode(mode) {
+            this.$emit('update:processing-mode', mode);
         }
     },
     template: `
@@ -336,15 +480,30 @@ const PreviewPanelComponent = {
             <div class="panel-header">
                 <h2>处理风格</h2>
                 <div class="panel-header-actions">
-                    <button class="btn-icon" title="导出 PDF" aria-label="导出 PDF" @click="$emit('export-pdf')">
+                    <button class="btn-icon" title="导出 HTML" aria-label="导出 HTML" @click="$emit('export-html')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </button>
+                    <button class="btn-icon" title="导出图片" aria-label="导出图片" @click="$emit('export-image')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
                     </button>
                     <button class="btn-icon" title="打印" aria-label="打印" @click="$emit('print')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                     </button>
                 </div>
             </div>
-            <div class="style-grid" role="listbox" aria-label="选择处理风格">
+            <!-- 处理模式切换 -->
+            <div class="mode-switch">
+                <button class="mode-switch-btn" :class="{ active: processingMode === 'style' }" @click="switchMode('style')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                    风格转换
+                </button>
+                <button class="mode-switch-btn" :class="{ active: processingMode === 'ai' }" @click="switchMode('ai')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 1.95-1.4 3.58-3.25 3.93"/><path d="M12 2a4 4 0 00-4 4c0 1.95 1.4 3.58 3.25 3.93"/><line x1="12" y1="10" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+                    AI 处理
+                </button>
+            </div>
+            <!-- 风格转换模式 -->
+            <div v-if="processingMode === 'style'" class="style-grid" role="listbox" aria-label="选择处理风格">
                 <button 
                     v-for="s in styles" 
                     :key="s.key"
@@ -352,6 +511,25 @@ const PreviewPanelComponent = {
                     :class="{ active: s.key === currentStyle }"
                     @click="$emit('select-style', s.key)"
                 >{{ s.name }}</button>
+            </div>
+            <!-- AI 处理模式 -->
+            <div v-if="processingMode === 'ai'" class="ai-task-grid" role="listbox" aria-label="选择 AI 任务">
+                <button 
+                    v-for="task in aiTasks" 
+                    :key="task.key"
+                    class="ai-task-card" 
+                    :class="{ active: task.key === currentAITask, disabled: aiProcessing }"
+                    :disabled="aiProcessing"
+                    @click="$emit('ai-task', task.key)"
+                >
+                    <span class="ai-task-name">{{ task.name }}</span>
+                    <span class="ai-task-desc">{{ task.description }}</span>
+                </button>
+            </div>
+            <!-- AI 处理状态 -->
+            <div v-if="aiProcessing" class="ai-processing-status">
+                <div class="ai-processing-spinner"></div>
+                <span>AI 正在处理中（{{ currentAITaskName }}）...</span>
             </div>
             <div class="preview-area" aria-live="polite">
                 <template v-if="!hasContent">
@@ -401,6 +579,7 @@ const app = createApp({
         'link-modal': LinkModalComponent,
         'template-modal': TemplateModalComponent,
         'history-modal': HistoryModalComponent,
+        'user-modal': UserModalComponent,
         'toast': ToastComponent
     },
     setup() {
@@ -421,12 +600,18 @@ const app = createApp({
         const showLinkModal = ref(false);
         const showTemplateModal = ref(false);
         const showHistoryModal = ref(false);
+        const showUserModal = ref(false);
         const showToast = ref(false);
         const toastMessage = ref('');
         const toastType = ref('info');
         const generatedLink = ref('');
         const autoSaveStatus = ref('');
         const autoSaveStatusShow = ref(false);
+
+        // AI 处理相关状态
+        const processingMode = ref('style');
+        const currentAITask = ref('');
+        const aiProcessing = ref(false);
 
         // Timers
         let autoSaveTimer = null;
@@ -449,6 +634,17 @@ const app = createApp({
             if (count > 4500) return 'error';
             if (count > 3000) return 'warn';
             return '';
+        });
+
+        // 用户登录状态
+        const isLoggedIn = computed(() => !!userName.value);
+
+        // AI 任务列表
+        const aiTasks = computed(() => {
+            if (typeof AIService !== 'undefined') {
+                return AIService.getAvailableTasks();
+            }
+            return [];
         });
 
         // ===== 工具方法 =====
@@ -492,6 +688,26 @@ const app = createApp({
             statusTimer = setTimeout(() => { autoSaveStatusShow.value = false; }, 2000);
         }
 
+        // ===== 用户系统逻辑 =====
+        function onLogin(name) {
+            userName.value = name;
+            localStorage.setItem('textcraft_user', name);
+            store.updateUser(name);
+            // 切换用户后重新加载历史记录
+            myLetters.value = [...store.getState().history];
+            showUserModal.value = false;
+            showToastMsg(`欢迎，${name}！`, 'success');
+        }
+
+        function onLogout() {
+            userName.value = '';
+            localStorage.removeItem('textcraft_user');
+            store.updateUser('');
+            myLetters.value = [...store.getState().history];
+            showUserModal.value = false;
+            showToastMsg('已退出登录', 'success');
+        }
+
         // ===== 业务逻辑 =====
         function onSave() {
             const text = content.value.trim();
@@ -531,6 +747,37 @@ const app = createApp({
             }
 
             store.updateTransform(styleKey, currentTransformed.value, text);
+        }
+
+        // AI 任务处理
+        async function onAITask(taskKey) {
+            const text = content.value.trim();
+            if (!text) { showToastMsg('请先输入文本', 'warning'); return; }
+
+            currentAITask.value = taskKey;
+            aiProcessing.value = true;
+
+            try {
+                if (typeof AIService !== 'undefined') {
+                    const result = await AIService.process(text, taskKey, {
+                        input: text,
+                        styleKey: currentStyle.value,
+                        styleName: styles.value.find(s => s.key === currentStyle.value)?.name || '',
+                    });
+                    currentTransformed.value = result;
+                    currentOriginal.value = text;
+                    // 同步到 store
+                    store.updateTransform(currentStyle.value || 'ai', result, text);
+                    showToastMsg('AI 处理完成', 'success');
+                } else {
+                    showToastMsg('AI 服务未加载', 'error');
+                }
+            } catch (e) {
+                console.error('AI processing error:', e);
+                showToastMsg('AI 处理失败，请重试', 'error');
+            } finally {
+                aiProcessing.value = false;
+            }
         }
 
         function onGenerateLink() {
@@ -583,19 +830,67 @@ const app = createApp({
                 original: currentOriginal.value,
                 time: new Date().toLocaleString('zh-CN'),
             };
-            const json = typeof TransformerService !== 'undefined' 
-                ? TransformerService.exportJSON(letterObj) 
-                : JSON.stringify(letterObj, null, 2);
-            downloadFile(json, 'textcraft-export.json', 'application/json');
+            if (typeof ExportService !== 'undefined') {
+                ExportService.exportJSON(letterObj);
+            } else {
+                const json = typeof TransformerService !== 'undefined' 
+                    ? TransformerService.exportJSON(letterObj) 
+                    : JSON.stringify(letterObj, null, 2);
+                downloadFile(json, 'textcraft-export.json', 'application/json');
+            }
             showToastMsg('JSON 已导出', 'success');
         }
 
         function onExportText() {
-            const text = typeof TransformerService !== 'undefined'
-                ? TransformerService.exportPlainText({ content: currentTransformed.value })
-                : currentTransformed.value;
-            downloadFile(text, 'textcraft-export.txt', 'text/plain');
+            if (typeof ExportService !== 'undefined') {
+                ExportService.exportText({ content: currentTransformed.value });
+            } else {
+                const text = typeof TransformerService !== 'undefined'
+                    ? TransformerService.exportPlainText({ content: currentTransformed.value })
+                    : currentTransformed.value;
+                downloadFile(text, 'textcraft-export.txt', 'text/plain');
+            }
             showToastMsg('文本已导出', 'success');
+        }
+
+        // 导出图片（使用 ExportService）
+        async function onExportImage() {
+            if (!currentTransformed.value) { showToastMsg('请先选择风格并预览', 'warning'); return; }
+
+            const style = styles.value.find(s => s.key === currentStyle.value);
+            if (typeof ExportService !== 'undefined') {
+                try {
+                    await ExportService.exportImage({
+                        content: currentTransformed.value,
+                        styleName: style ? style.name : currentStyle.value,
+                    });
+                    showToastMsg('图片已导出', 'success');
+                } catch (e) {
+                    console.error('Export image error:', e);
+                    showToastMsg('图片导出失败', 'error');
+                }
+            } else {
+                showToastMsg('导出服务未加载', 'error');
+            }
+        }
+
+        // 导出 HTML（使用 ExportService）
+        function onExportHTML() {
+            if (!currentTransformed.value) { showToastMsg('请先选择风格并预览', 'warning'); return; }
+
+            const style = styles.value.find(s => s.key === currentStyle.value);
+            if (typeof ExportService !== 'undefined') {
+                ExportService.exportHTML({
+                    styleKey: currentStyle.value,
+                    styleName: style ? style.name : currentStyle.value,
+                    content: currentTransformed.value,
+                    original: currentOriginal.value,
+                    time: new Date().toLocaleString('zh-CN'),
+                });
+                showToastMsg('HTML 已导出', 'success');
+            } else {
+                showToastMsg('导出服务未加载', 'error');
+            }
         }
 
         function downloadFile(content, filename, mimeType) {
@@ -712,6 +1007,7 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                 showLinkModal.value = false;
                 showTemplateModal.value = false;
                 showHistoryModal.value = false;
+                showUserModal.value = false;
             }
         }
 
@@ -729,11 +1025,13 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
 
         return {
             content, currentStyle, currentTransformed, currentOriginal, myLetters, userName,
-            showLinkModal, showTemplateModal, showHistoryModal, showToast, toastMessage, toastType,
+            showLinkModal, showTemplateModal, showHistoryModal, showUserModal, showToast, toastMessage, toastType,
             generatedLink, autoSaveStatus, autoSaveStatusShow,
-            styles, wordCount, wordCountStatus,
+            processingMode, aiTasks, currentAITask, aiProcessing,
+            styles, wordCount, wordCountStatus, isLoggedIn,
             onClear, onStyleSelect, onGenerateLink, onCopyLink, onOpenLink, onCopyText,
-            onPrint, onExportJSON, onExportText,
+            onPrint, onExportJSON, onExportText, onExportImage, onExportHTML,
+            onAITask, onLogin, onLogout,
             useTemplate, useHistoryItem, generateLinkFromHistory, deleteHistoryItem, onClearHistory
         };
     },
@@ -749,18 +1047,25 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                 @clear="onClear"
                 @template="showTemplateModal = true"
                 @history="showHistoryModal = true"
-                @user="showToast = true"
+                @user="showUserModal = true"
             />
             <preview-panel
                 :current-style="currentStyle"
                 :current-transformed="currentTransformed"
                 :styles="styles"
+                :processing-mode="processingMode"
+                :ai-tasks="aiTasks"
+                :current-ai-task="currentAITask"
+                :ai-processing="aiProcessing"
                 @select-style="onStyleSelect"
                 @generate="onGenerateLink"
                 @copy="onCopyText"
                 @print="onPrint"
                 @export-pdf="onPrint"
-                @export-image="onPrint"
+                @export-image="onExportImage"
+                @export-html="onExportHTML"
+                @update:processing-mode="processingMode = $event"
+                @ai-task="onAITask"
             />
             <link-modal
                 :show="showLinkModal"
@@ -784,6 +1089,14 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                 @link="generateLinkFromHistory"
                 @delete="deleteHistoryItem"
                 @clear="onClearHistory"
+            />
+            <user-modal
+                :show="showUserModal"
+                :user-name="userName"
+                :is-logged-in="isLoggedIn"
+                @close="showUserModal = false"
+                @login="onLogin"
+                @logout="onLogout"
             />
             <toast :show="showToast" :message="toastMessage" :type="toastType" />
         </div>
