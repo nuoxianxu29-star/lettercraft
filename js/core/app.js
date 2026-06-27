@@ -210,8 +210,9 @@ const SidebarComponent = {
         userName: String,
         isLoggedIn: Boolean,
         historyCount: Number,
+        isDarkTheme: Boolean,
     },
-    emits: ['nav-change', 'toggle-collapse', 'login', 'logout', 'user'],
+    emits: ['nav-change', 'toggle-collapse', 'login', 'logout', 'user', 'toggle-dark-theme'],
     data() {
         return {
             navItems: [
@@ -260,6 +261,10 @@ const SidebarComponent = {
                 </button>
             </nav>
             <div class="sidebar-footer">
+                <button class="sidebar-theme-btn" @click="$emit('toggle-dark-theme')" :title="isDarkTheme ? '切换到亮色主题' : '切换到暗色主题'">
+                    <span class="theme-icon">{{ isDarkTheme ? '☀️' : '🌙' }}</span>
+                    <span v-show="!collapsed">{{ isDarkTheme ? '亮色' : '暗色' }}</span>
+                </button>
                 <button v-if="!isLoggedIn" class="sidebar-login-btn" @click="$emit('login')">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                     <span v-show="!collapsed">登录</span>
@@ -926,6 +931,9 @@ const app = createApp({
         let recognition = null;
         let speechSynth = null;
 
+        // 暗色主题状态
+        const isDarkTheme = ref(localStorage.getItem('textcraft_dark_theme') === 'true');
+
         // Timers
         let autoSaveTimer = null;
         let toastTimer = null;
@@ -1515,6 +1523,7 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); onSave(); }
             if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); onClear(); }
             if ((e.ctrlKey || e.metaKey) && e.key === 'p') { e.preventDefault(); onPrint(); }
+            if ((e.ctrlKey || e.metaKey) && e.key === 't') { e.preventDefault(); toggleDarkTheme(); }
             if (e.key === 'Escape') {
                 showLinkModal.value = false;
                 showTemplateModal.value = false;
@@ -1523,9 +1532,21 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             }
         }
 
+        // ===== 暗色主题切换 =====
+        function toggleDarkTheme() {
+            isDarkTheme.value = !isDarkTheme.value;
+            localStorage.setItem('textcraft_dark_theme', isDarkTheme.value);
+            document.body.classList.toggle('dark-theme', isDarkTheme.value);
+            showToastMsg(isDarkTheme.value ? '已切换到暗色主题' : '已切换到亮色主题', 'success');
+        }
+
         // ===== 生命周期 =====
         onMounted(() => {
             document.addEventListener('keydown', handleKeydown);
+            // 初始化暗色主题
+            if (isDarkTheme.value) {
+                document.body.classList.add('dark-theme');
+            }
         });
 
         onUnmounted(() => {
@@ -1545,13 +1566,14 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             showLinkModal, showTemplateModal, showHistoryModal, showUserModal, showSettingsModal, showToast, toastMessage, toastType,
             generatedLink, autoSaveStatus, autoSaveStatusShow,
             processingMode, platformMode, aiTasks, currentAITask, aiProcessing,
-            isListening, isReading,
+            isListening, isReading, isDarkTheme,
             showEnvelope, envelopePhase,
             activeNav, sidebarCollapsed,
             styles, wordCount, wordCountStatus, isLoggedIn,
             onClear, onStyleSelect, onGenerateLink, onCopyLink, onOpenLink, onCopyText,
             onPrint, onExportJSON, onExportText, onExportImage, onExportHTML,
             onAITask, onVoiceInput, onReadAloud, onLogin, onLogout,
+            toggleDarkTheme,
             playEnvelopeAnimation, closeEnvelope,
             onNavChange, toggleSidebar,
             documents, currentDocId, currentDoc, showDocManager, favorites,
@@ -1567,8 +1589,10 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                 :user-name="userName"
                 :is-logged-in="isLoggedIn"
                 :history-count="myLetters.length"
+                :is-dark-theme="isDarkTheme"
                 @nav-change="onNavChange"
                 @toggle-collapse="toggleSidebar"
+                @toggle-dark-theme="toggleDarkTheme"
                 @login="onLogin"
                 @user="showUserModal = true"
             />
