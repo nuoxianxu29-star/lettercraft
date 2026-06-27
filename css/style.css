@@ -1528,10 +1528,9 @@ body {
     transition: transform 0.4s ease 0.1s;
 }
 
-.letter-view-envelope-wrapper .envelope.phase-4 .envelope-letter {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-    transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s;
+.letter-view-envelope-wrapper .envelope.phase-4 .envelope-flap {
+    transform: rotateX(-180deg);
+    transition: transform 0.4s ease;
 }
 
 .letter-view-envelope-wrapper .envelope.final {
@@ -2806,7 +2805,7 @@ body {
     border-radius: 8px;
     padding: 30px 25px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    overflow: hidden;
+    overflow: visible;
     z-index: 3;
     opacity: 0;
 }
@@ -3078,7 +3077,7 @@ body {
     transition: transform 0.5s ease;
 }
 
-.envelope.phase-4 .envelope-letter {
+.envelope.phase-4 #share-letter {
     animation: letterSlideOut 0.8s ease forwards;
 }
 
@@ -3091,51 +3090,10 @@ body {
     transform: rotateX(-180deg);
 }
 
-/* 分享页信封最终状态：信封平躺，信纸展开 */
+/* 分享页信封最终状态：信封淡出消失 */
 .letter-view-envelope-wrapper .envelope.final {
-    transform: none;
-    width: 100%;
-    max-width: 580px;
-    height: auto;
-    min-height: 200px;
-    background: transparent;
-}
-
-.letter-view-envelope-wrapper .envelope.final .envelope-flap {
-    transform: rotateX(-180deg);
-    display: none;
-}
-
-.letter-view-envelope-wrapper .envelope.final .envelope-front {
-    display: none;
-}
-
-.letter-view-envelope-wrapper .envelope.final .envelope-back {
-    position: relative;
-    backface-visibility: visible;
-    transform: none;
-    background: transparent;
-    height: auto;
-    min-height: 300px;
-}
-
-.letter-view-envelope-wrapper .envelope.final .envelope-letter {
-    position: relative;
-    top: 0;
-    left: 0;
-    transform: none;
-    width: 100%;
-    height: auto;
-    opacity: 1;
-    max-height: none;
-    overflow: visible;
-    padding: 40px;
-    background: #fffef9;
-    border-radius: 16px;
-    box-shadow: 0 8px 40px rgba(139, 94, 60, 0.15);
-    border: 1px solid #e0dcd3;
-}
-
-.letter-view-envelope-wrapper .envelope.final .envelope-letter-content {
-    min-height: 150px;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.6s ease;
+    pointer-events: none;
 }

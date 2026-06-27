@@ -57,71 +57,68 @@ window.getEnvelopeConfig = function getEnvelopeConfig(styleKey) {
 
                 document.getElementById('app').innerHTML = `
                     <div class="letter-view-page">
-                        <div class="letter-view-envelope-wrapper">
+                        <div class="letter-view-envelope-wrapper" id="letter-wrapper">
                             <div class="envelope" id="share-envelope" data-style="${styleKey}"
                                  style="--envelope-color: ${cfg.envelopeColor}; --seal-color: ${cfg.sealColor}">
                                 <div class="envelope-front">
                                     <div class="envelope-flap"></div>
                                     <div class="envelope-seal ${cfg.sealType}"></div>
                                 </div>
-                                <div class="envelope-back">
-                                    <div class="envelope-letter">
-                                        <div class="envelope-letter-header">
-                                            <div class="envelope-letter-logo">
-                                                <span>✉</span>
-                                                <span>TextCraft</span>
-                                            </div>
-                                            <span class="envelope-letter-badge">${escapeHtml(letter.styleName)}</span>
-                                        </div>
-                                        <div class="envelope-letter-content">${escapeHtml(letter.content).replace(/\n/g, '<br>')}</div>
-                                        <div class="envelope-letter-footer">由 TextCraft 智能文本处理系统生成 · ${letter.time || ''}</div>
-                                    </div>
-                                </div>
+                                <div class="envelope-back"></div>
                             </div>
                         </div>
                     </div>
                 `;
 
-                const el = document.getElementById('share-envelope');
-                if (!el) return;
+                const envelopeEl = document.getElementById('share-envelope');
+                if (!envelopeEl) return;
 
-                el.classList.add('phase-1');
+                // 阶段 1: 飞入
+                envelopeEl.classList.add('phase-1');
                 setTimeout(() => {
-                    el.classList.remove('phase-1');
-                    el.classList.add('phase-2');
+                    envelopeEl.classList.remove('phase-1');
+                    envelopeEl.classList.add('phase-2');
                 }, 700);
+                // 阶段 2: 翻转
                 setTimeout(() => {
-                    el.classList.add('phase-3');
+                    envelopeEl.classList.add('phase-3');
                 }, 1400);
+                // 阶段 3: 打开封口
                 setTimeout(() => {
-                    el.classList.add('phase-4');
+                    envelopeEl.classList.add('phase-4');
                 }, 1900);
+                // 阶段 4: 信封缩小淡出，信纸放大淡入
                 setTimeout(() => {
-                    // 动画完成，直接替换为完整信纸视图
-                    document.getElementById('app').innerHTML = `
-                        <div class="letter-view-page">
-                            <div class="letter-view-container">
-                                <div class="letter-view-card ${styleKey}">
-                                    <div class="letter-view-header">
-                                        <div class="letter-view-logo">
-                                            <span class="logo-icon">✉</span>
-                                            <span>TextCraft</span>
+                    const wrapper = document.getElementById('letter-wrapper');
+                    if (!wrapper) return;
+                    envelopeEl.classList.add('final');
+                    // 信封完全消失后，替换为完整信纸视图
+                    setTimeout(() => {
+                        document.getElementById('app').innerHTML = `
+                            <div class="letter-view-page">
+                                <div class="letter-view-container">
+                                    <div class="letter-view-card ${styleKey}">
+                                        <div class="letter-view-header">
+                                            <div class="letter-view-logo">
+                                                <span class="logo-icon">✉</span>
+                                                <span>TextCraft</span>
+                                            </div>
+                                            <span class="letter-view-style-badge">${escapeHtml(letter.styleName)}</span>
                                         </div>
-                                        <span class="letter-view-style-badge">${escapeHtml(letter.styleName)}</span>
+                                        <div class="letter-view-content">
+                                            ${escapeHtml(letter.content).replace(/\n/g, '<br>')}
+                                        </div>
+                                        <div class="letter-view-footer">
+                                            <div class="letter-view-time">${letter.time || ''}</div>
+                                            <a href="${window.location.pathname}" class="letter-view-cta">我也要生成</a>
+                                        </div>
                                     </div>
-                                    <div class="letter-view-content">
-                                        ${escapeHtml(letter.content).replace(/\n/g, '<br>')}
-                                    </div>
-                                    <div class="letter-view-footer">
-                                        <div class="letter-view-time">${letter.time || ''}</div>
-                                        <a href="${window.location.pathname}" class="letter-view-cta">我也要生成</a>
-                                    </div>
+                                    <div class="letter-view-watermark">由 TextCraft 智能文本处理系统生成</div>
                                 </div>
-                                <div class="letter-view-watermark">由 TextCraft 智能文本处理系统生成</div>
                             </div>
-                        </div>
-                    `;
-                }, 2800);
+                        `;
+                    }, 600);
+                }, 2400);
             });
         } else {
             throw new Error('Invalid letter data');
