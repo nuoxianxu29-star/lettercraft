@@ -175,6 +175,13 @@ const EnvelopeComponent = {
     },
     template: `
         <div class="envelope-overlay" v-if="show" @click.self="$emit('close')">
+            <!-- 关闭按钮 -->
+            <button class="envelope-close-btn" @click="$emit('close')" title="关闭 (Esc)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
             <div class="envelope" :class="[styleKey, { 'phase-1': animationPhase >= 1, 'phase-2': animationPhase >= 2, 'phase-3': animationPhase >= 3, 'phase-4': animationPhase >= 4, 'final': animationPhase >= 5 }]" :style="{ '--envelope-color': envelopeConfig.envelopeColor, '--seal-color': sealColor }">
                 <!-- 信封正面 -->
                 <div class="envelope-front">
@@ -188,7 +195,7 @@ const EnvelopeComponent = {
                     <div class="envelope-letter" :class="{ 'slide-out': animationPhase >= 4 }">
                         <div class="envelope-letter-header">
                             <div class="envelope-letter-logo">
-                                <span>⚡</span>
+                                <span></span>
                                 <span>TextCraft</span>
                             </div>
                             <span class="envelope-letter-badge">{{ styleName }}</span>

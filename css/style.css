@@ -2938,6 +2938,37 @@ body {
     animation: fadeIn 0.3s ease;
 }
 
+/* 信封关闭按钮 */
+.envelope-close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    transition: all 0.2s ease;
+    z-index: 1001;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.envelope-close-btn:hover {
+    background: white;
+    color: #333;
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.envelope-close-btn:active {
+    transform: scale(0.95);
+}
+
 @keyframes fadeIn {
     from {
         opacity: 0;
