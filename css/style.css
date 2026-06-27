@@ -1,7 +1,7 @@
 /* ============================================
-   TextCraft v11.0 - AI-Powered Text Processing System
+   TextCraft v12.0 - AI-Powered Text Processing System
    架构：Vue 3 + 模块化前端架构 (Store / Services / Router / UI)
-   功能：多模板智能文本生成 / 语义转换引擎 / 用户级历史记录 / 导出 JSON/文本 / 暗色主题 / Markdown渲染
+   功能：多模板智能文本生成 / 语义转换引擎 / 用户级历史记录 / 导出 JSON/文本 / 暗色主题 / Markdown渲染 / Mermaid流程图
    ============================================ */
 
 /* --- CSS Variables --- */
@@ -746,6 +746,30 @@ body {
 .preview-letter-content .katex-display {
     margin: 1em 0;
     overflow-x: auto;
+}
+
+/* Mermaid diagram styles */
+.preview-letter-content .mermaid-block {
+    margin: 1em 0;
+    padding: 1em;
+    background: var(--color-paper);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    overflow-x: auto;
+}
+
+.preview-letter-content .mermaid-block svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.preview-letter-content .mermaid-error {
+    color: var(--color-danger);
+    font-size: 13px;
+    padding: 0.5em;
+    background: var(--color-danger-bg, #fee);
+    border-radius: 4px;
 }
 
 .preview-letter-footer {

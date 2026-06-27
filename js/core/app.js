@@ -744,7 +744,16 @@ const PreviewPanelComponent = {
         },
         renderMarkdown(text) {
             if (typeof marked !== 'undefined') {
-                let html = marked.parse(text);
+                // 先提取 Mermaid 代码块
+                const mermaidBlocks = [];
+                let processedText = text.replace(/```mermaid\n([\s\S]+?)```/g, (match, code) => {
+                    const id = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                    mermaidBlocks.push({ id, code: code.trim() });
+                    return `<div class="mermaid-block" data-mermaid-id="${id}"></div>`;
+                });
+
+                let html = marked.parse(processedText);
+
                 // 处理 LaTeX 公式
                 html = html.replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
                     try {
@@ -762,6 +771,24 @@ const PreviewPanelComponent = {
                     } catch (e) { return match; }
                     return match;
                 });
+
+                // 渲染 Mermaid 图表
+                if (mermaidBlocks.length > 0 && typeof mermaid !== 'undefined') {
+                    setTimeout(() => {
+                        mermaidBlocks.forEach(async ({ id, code }) => {
+                            const container = document.querySelector(`[data-mermaid-id="${id}"]`);
+                            if (container) {
+                                try {
+                                    const { svg } = await mermaid.render(`mermaid-svg-${id}`, code);
+                                    container.innerHTML = svg;
+                                } catch (e) {
+                                    container.innerHTML = `<pre class="mermaid-error">Mermaid 渲染失败: ${e.message}</pre>`;
+                                }
+                            }
+                        });
+                    }, 100);
+                }
+
                 return html;
             }
             return text.replace(/\n/g, '<br>');
