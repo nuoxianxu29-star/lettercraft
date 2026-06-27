@@ -59,7 +59,8 @@ window.getEnvelopeConfig = function getEnvelopeConfig(styleKey) {
                     <div class="letter-view-page">
                         <div class="letter-view-envelope-wrapper" id="letter-wrapper">
                             <div class="envelope" id="share-envelope" data-style="${styleKey}"
-                                 style="--envelope-color: ${cfg.envelopeColor}; --seal-color: ${cfg.sealColor}">
+                                 style="--envelope-color: ${cfg.envelopeColor}; --seal-color: ${cfg.sealColor}; cursor: pointer;"
+                                 title="点击打开">
                                 <div class="envelope-front">
                                     <div class="envelope-flap"></div>
                                     <div class="envelope-seal ${cfg.sealType}"></div>
@@ -71,54 +72,40 @@ window.getEnvelopeConfig = function getEnvelopeConfig(styleKey) {
                 `;
 
                 const envelopeEl = document.getElementById('share-envelope');
-                if (!envelopeEl) return;
+                const wrapper = document.getElementById('letter-wrapper');
+                if (!envelopeEl || !wrapper) return;
 
-                // 阶段 1: 飞入
+                // 信封飞入动画
                 envelopeEl.classList.add('phase-1');
                 setTimeout(() => {
                     envelopeEl.classList.remove('phase-1');
                     envelopeEl.classList.add('phase-2');
                 }, 700);
-                // 阶段 2: 翻转
-                setTimeout(() => {
-                    envelopeEl.classList.add('phase-3');
-                }, 1400);
-                // 阶段 3: 打开封口
-                setTimeout(() => {
-                    envelopeEl.classList.add('phase-4');
-                }, 1900);
-                // 阶段 4: 信封缩小淡出，信纸放大淡入
-                setTimeout(() => {
-                    const wrapper = document.getElementById('letter-wrapper');
-                    if (!wrapper) return;
-                    envelopeEl.classList.add('final');
-                    // 信封完全消失后，替换为完整信纸视图
-                    setTimeout(() => {
-                        document.getElementById('app').innerHTML = `
-                            <div class="letter-view-page">
-                                <div class="letter-view-container">
-                                    <div class="letter-view-card ${styleKey}">
-                                        <div class="letter-view-header">
-                                            <div class="letter-view-logo">
-                                                <span class="logo-icon">✉</span>
-                                                <span>TextCraft</span>
-                                            </div>
-                                            <span class="letter-view-style-badge">${escapeHtml(letter.styleName)}</span>
-                                        </div>
-                                        <div class="letter-view-content">
-                                            ${escapeHtml(letter.content).replace(/\n/g, '<br>')}
-                                        </div>
-                                        <div class="letter-view-footer">
-                                            <div class="letter-view-time">${letter.time || ''}</div>
-                                            <a href="${window.location.pathname}" class="letter-view-cta">我也要生成</a>
-                                        </div>
+
+                // 点击信封 → 信封消失，展示信纸
+                envelopeEl.addEventListener('click', () => {
+                    wrapper.innerHTML = `
+                        <div class="letter-view-container">
+                            <div class="letter-view-card ${styleKey}">
+                                <div class="letter-view-header">
+                                    <div class="letter-view-logo">
+                                        <span class="logo-icon">✉</span>
+                                        <span>TextCraft</span>
                                     </div>
-                                    <div class="letter-view-watermark">由 TextCraft 智能文本处理系统生成</div>
+                                    <span class="letter-view-style-badge">${escapeHtml(letter.styleName)}</span>
+                                </div>
+                                <div class="letter-view-content">
+                                    ${escapeHtml(letter.content).replace(/\n/g, '<br>')}
+                                </div>
+                                <div class="letter-view-footer">
+                                    <div class="letter-view-time">${letter.time || ''}</div>
+                                    <a href="${window.location.pathname}" class="letter-view-cta">我也要生成</a>
                                 </div>
                             </div>
-                        `;
-                    }, 600);
-                }, 2400);
+                            <div class="letter-view-watermark">由 TextCraft 智能文本处理系统生成</div>
+                        </div>
+                    `;
+                });
             });
         } else {
             throw new Error('Invalid letter data');
