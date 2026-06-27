@@ -3,7 +3,7 @@
  * 离线缓存策略：Cache-First（静态资源） / Network-First（API 请求）
  */
 
-const CACHE_NAME = 'textcraft-v1';
+const CACHE_NAME = 'textcraft-v2';
 const STATIC_ASSETS = [
   '.',
   'index.html',
