@@ -1578,7 +1578,7 @@ body {
     padding: 48px 40px;
     border: 1px solid #e0dcd3;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .letter-view-card::before {
