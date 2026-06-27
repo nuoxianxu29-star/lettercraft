@@ -619,7 +619,7 @@ const HistoryModalComponent = {
     `
 };
 
-// 编辑器面板组件
+// 编辑器面板组件（含工具栏 v53.0）
 const EditorPanelComponent = {
     props: {
         content: String,
@@ -629,15 +629,27 @@ const EditorPanelComponent = {
         autoSaveStatusShow: Boolean,
         userName: String,
         isListening: Boolean,
+        canUndo: Boolean,
+        canRedo: Boolean,
+        editorFontSize: Number,
+        lineHeight: Number,
+        textIndent: Number,
+        textAlign: String,
+        showFindReplace: Boolean,
+        isFocusMode: Boolean,
+        showWatermark: Boolean,
     },
-    emits: ['update:content', 'clear', 'template', 'history', 'user', 'voice-input'],
+    emits: ['update:content', 'clear', 'template', 'history', 'user', 'voice-input',
+        'undo', 'redo', 'phrase', 'versions', 'shortcuts', 'find-replace',
+        'reading-mode', 'focus-mode', 'diff', 'font-size-change', 'line-height-change',
+        'text-indent-change', 'text-align-change', 'watermark-toggle'],
     methods: {
         onInput(event) {
             this.$emit('update:content', event.target.value);
         }
     },
     template: `
-        <section class="write-panel" aria-label="输入区域">
+        <section class="write-panel" :class="{ 'focus-mode': isFocusMode }" aria-label="输入区域">
             <div class="panel-header">
                 <div class="logo">
                     <span class="logo-icon" aria-hidden="true">⚡</span>
@@ -649,6 +661,12 @@ const EditorPanelComponent = {
                 <div class="header-actions">
                     <button class="btn-icon" :class="{ listening: isListening }" title="语音输入" aria-label="语音输入" @click="$emit('voice-input')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0014 0"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+                    </button>
+                    <button class="btn-icon" title="撤销 (Ctrl+Z)" :disabled="!canUndo" @click="$emit('undo')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1,4 1,10 7,10"/><path d="M3.51 15a9 9 0 105.64-9.36L1 10"/></svg>
+                    </button>
+                    <button class="btn-icon" title="重做 (Ctrl+Y)" :disabled="!canRedo" @click="$emit('redo')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 11-5.64-9.36L23 10"/></svg>
                     </button>
                     <button class="btn-icon" title="用户" aria-label="用户设置" @click="$emit('user')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -664,9 +682,60 @@ const EditorPanelComponent = {
                     </button>
                 </div>
             </div>
+            <!-- v53.0: 编辑工具栏 -->
+            <div class="editor-toolbar">
+                <button class="toolbar-btn" title="撤销" @click="$emit('undo')" :disabled="!canUndo">↩</button>
+                <button class="toolbar-btn" title="重做" @click="$emit('redo')" :disabled="!canRedo">↪</button>
+                <div class="toolbar-divider"></div>
+                <!-- v45.0: 字体大小 -->
+                <div class="font-size-control">
+                    <button class="font-size-btn" title="减小字体" @click="$emit('font-size-change', -1)">A-</button>
+                    <span class="font-size-value">{{ editorFontSize }}</span>
+                    <button class="font-size-btn" title="增大字体" @click="$emit('font-size-change', 1)">A+</button>
+                </div>
+                <div class="toolbar-divider"></div>
+                <!-- v46.0: 行距 -->
+                <button class="toolbar-btn" title="减小行距" @click="$emit('line-height-change', -0.2)">≡-</button>
+                <span class="font-size-value">{{ lineHeight.toFixed(1) }}</span>
+                <button class="toolbar-btn" title="增大行距" @click="$emit('line-height-change', 0.2)">≡+</button>
+                <div class="toolbar-divider"></div>
+                <!-- v47.0: 段落缩进 -->
+                <button class="toolbar-btn" title="减少缩进" @click="$emit('text-indent-change', -2)">⇤</button>
+                <button class="toolbar-btn" title="增加缩进" @click="$emit('text-indent-change', 2)">⇥</button>
+                <div class="toolbar-divider"></div>
+                <!-- v48.0: 文本对齐 -->
+                <button class="toolbar-btn" :class="{ active: textAlign === 'left' }" title="左对齐" @click="$emit('text-align-change', 'left')">☰</button>
+                <button class="toolbar-btn" :class="{ active: textAlign === 'center' }" title="居中" @click="$emit('text-align-change', 'center')">☷</button>
+                <button class="toolbar-btn" :class="{ active: textAlign === 'right' }" title="右对齐" @click="$emit('text-align-change', 'right')">☶</button>
+                <div class="toolbar-divider"></div>
+                <!-- v49.0: 查找替换 -->
+                <button class="toolbar-btn" title="查找替换 (Ctrl+F)" @click="$emit('find-replace')">🔍</button>
+                <!-- v33.0: 快捷短语 -->
+                <button class="toolbar-btn" title="快捷短语" @click="$emit('phrase')">💬</button>
+                <!-- v30.0: 版本历史 -->
+                <button class="toolbar-btn" title="版本历史" @click="$emit('versions')">📜</button>
+                <!-- v29.0: 文本对比 -->
+                <button class="toolbar-btn" title="文本对比" @click="$emit('diff')">📊</button>
+                <!-- v23.0: 阅读模式 -->
+                <button class="toolbar-btn" title="阅读模式" @click="$emit('reading-mode')">📖</button>
+                <!-- v24.0: 全屏专注 -->
+                <button class="toolbar-btn" :class="{ active: isFocusMode }" title="全屏专注" @click="$emit('focus-mode')">🎯</button>
+                <!-- v52.0: 水印 -->
+                <button class="toolbar-btn" title="水印" @click="$emit('watermark-toggle')">💧</button>
+                <!-- v21.0: 快捷键 -->
+                <button class="toolbar-btn" title="快捷键" @click="$emit('shortcuts')">⌨</button>
+            </div>
+            <!-- v49.0: 查找替换栏 -->
+            <find-replace-bar :show="showFindReplace" :content="content" @close="$emit('find-replace')" @replace="$emit('replace', $event)" @replaceall="$emit('replaceall', $event)"></find-replace-bar>
             <div class="editor-wrapper">
-                <div class="letter-paper">
+                <div class="letter-paper" :style="{ '--editor-font-size': editorFontSize + 'px', '--editor-line-height': lineHeight, '--editor-text-indent': textIndent + 'em', '--editor-text-align': textAlign }">
                     <div class="paper-lines" aria-hidden="true"></div>
+                    <!-- v52.0: 水印 -->
+                    <div class="watermark-overlay" v-if="showWatermark">
+                        <div class="watermark-text" style="top:20%;left:10%">TextCraft</div>
+                        <div class="watermark-text" style="top:50%;left:40%">TextCraft</div>
+                        <div class="watermark-text" style="top:80%;left:70%">TextCraft</div>
+                    </div>
                     <textarea 
                         :value="content"
                         @input="onInput"
@@ -674,6 +743,7 @@ const EditorPanelComponent = {
                         aria-label="文本输入框"
                         maxlength="5000"
                         spellcheck="true"
+                        :style="{ fontSize: editorFontSize + 'px', lineHeight: lineHeight, textIndent: textIndent + 'em', textAlign: textAlign }"
                     ></textarea>
                 </div>
             </div>
@@ -905,6 +975,280 @@ const PreviewPanelComponent = {
     `
 };
 
+// 快捷键面板组件 (v21.0)
+const ShortcutsModalComponent = {
+    props: { show: Boolean },
+    emits: ['close'],
+    data() {
+        return {
+            shortcuts: [
+                { key: 'Ctrl+S', desc: '保存' },
+                { key: 'Ctrl+D', desc: '清空' },
+                { key: 'Ctrl+P', desc: '打印' },
+                { key: 'Ctrl+T', desc: '切换主题' },
+                { key: 'Ctrl+Z', desc: '撤销' },
+                { key: 'Ctrl+Y', desc: '重做' },
+                { key: 'Ctrl+F', desc: '查找替换' },
+                { key: 'Ctrl+Shift+R', desc: '阅读模式' },
+                { key: 'Ctrl+Shift+F', desc: '全屏专注' },
+                { key: 'Ctrl+Shift+V', desc: '版本历史' },
+                { key: 'Ctrl+Shift+K', desc: '快捷键面板' },
+                { key: 'Esc', desc: '关闭弹窗' },
+            ]
+        };
+    },
+    template: `
+        <div class="modal-overlay" :class="{ show: show }" role="dialog" aria-modal="true" @click.self="$emit('close')">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>⌨️ 快捷键</h3>
+                    <button class="btn-icon modal-close" aria-label="关闭" @click="$emit('close')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="shortcut-grid">
+                        <div v-for="s in shortcuts" :key="s.key" class="shortcut-item">
+                            <span>{{ s.desc }}</span>
+                            <span class="shortcut-keys"><span class="shortcut-key">{{ s.key }}</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `
+};
+
+// 版本历史弹窗组件 (v30.0)
+const VersionHistoryModalComponent = {
+    props: { show: Boolean, versions: Array },
+    emits: ['close', 'restore', 'delete', 'save'],
+    methods: {
+        escapeHtml(text) { return text ? text.replace(/</g, '&lt;') : ''; },
+        formatTime(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        }
+    },
+    template: `
+        <div class="modal-overlay" :class="{ show: show }" role="dialog" aria-modal="true" @click.self="$emit('close')">
+            <div class="modal" style="max-width:560px">
+                <div class="modal-header">
+                    <h3>📜 版本历史</h3>
+                    <div class="modal-header-actions">
+                        <button class="btn-primary btn-new-doc" @click="$emit('save')">保存当前版本</button>
+                        <button class="btn-icon modal-close" aria-label="关闭" @click="$emit('close')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <template v-if="versions.length === 0">
+                        <div class="history-empty"><p>暂无版本历史</p></div>
+                    </template>
+                    <template v-else>
+                        <div v-for="v in versions" :key="v.id" class="version-item">
+                            <div class="version-info">
+                                <div class="version-note">{{ v.note || '自动保存' }}</div>
+                                <div class="version-time">{{ formatTime(v.timestamp) }} · {{ v.wordCount || 0 }} 字</div>
+                            </div>
+                            <div class="version-actions">
+                                <button class="btn-secondary" @click="$emit('restore', v.id)">恢复</button>
+                                <button class="btn-secondary btn-danger" @click="$emit('delete', v.id)">删除</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    `
+};
+
+// 查找替换栏组件 (v49.0)
+const FindReplaceBarComponent = {
+    props: { show: Boolean, content: String },
+    emits: ['close', 'replace', 'replaceAll'],
+    data() {
+        return { findText: '', replaceText: '', matchCount: 0 };
+    },
+    watch: {
+        findText() { this.updateCount(); },
+        content() { this.updateCount(); }
+    },
+    methods: {
+        updateCount() {
+            if (!this.findText) { this.matchCount = 0; return; }
+            const regex = new RegExp(this.findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            this.matchCount = (this.content.match(regex) || []).length;
+        },
+        onReplace() {
+            if (!this.findText || !this.content) return;
+            this.$emit('replace', { find: this.findText, replace: this.replaceText });
+        },
+        onReplaceAll() {
+            if (!this.findText || !this.content) return;
+            this.$emit('replaceAll', { find: this.findText, replace: this.replaceText });
+        }
+    },
+    template: `
+        <div class="find-replace-bar" v-if="show">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input v-model="findText" placeholder="查找..." @keydown.enter="onReplace">
+            <input v-model="replaceText" placeholder="替换为..." @keydown.enter="onReplaceAll">
+            <span class="find-count">{{ matchCount }} 处匹配</span>
+            <button @click="onReplace">替换</button>
+            <button @click="onReplaceAll">全部替换</button>
+            <button class="btn-icon" style="width:24px;height:24px" @click="$emit('close')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+    `
+};
+
+// 阅读模式组件 (v23.0)
+const ReadingModeComponent = {
+    props: { show: Boolean, content: String, styleName: String },
+    emits: ['close'],
+    methods: {
+        escapeHtml(text) { const d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
+    },
+    template: `
+        <div class="reading-mode-overlay" v-if="show" @click.self="$emit('close')">
+            <button class="btn-icon reading-mode-close" @click="$emit('close')" title="退出阅读模式">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <div class="reading-mode-content">
+                <h1 v-if="styleName">{{ escapeHtml(styleName) }}</h1>
+                <div style="white-space:pre-wrap;font-size:18px;line-height:2">{{ escapeHtml(content) }}</div>
+            </div>
+        </div>
+    `
+};
+
+// 导出菜单组件 (v36/37/39/40.0)
+const ExportMenuComponent = {
+    props: { show: Boolean },
+    emits: ['close', 'export-word', 'export-markdown', 'export-share-card', 'export-qr-code'],
+    template: `
+        <div class="export-dropdown" v-if="show">
+            <div class="export-menu">
+                <button class="export-menu-item" @click="$emit('export-word')">📄 导出 Word</button>
+                <button class="export-menu-item" @click="$emit('export-markdown')">📝 导出 Markdown</button>
+                <button class="export-menu-item" @click="$emit('export-share-card')">🖼️ 生成分享卡片</button>
+                <button class="export-menu-item" @click="$emit('export-qr-code')">📱 生成二维码</button>
+            </div>
+        </div>
+    `
+};
+
+// QR Code 弹窗
+const QRCodeModalComponent = {
+    props: { show: Boolean, qrUrl: String },
+    emits: ['close'],
+    template: `
+        <div class="modal-overlay" :class="{ show: show }" role="dialog" aria-modal="true" @click.self="$emit('close')">
+            <div class="modal" style="max-width:320px">
+                <div class="modal-header">
+                    <h3>📱 二维码分享</h3>
+                    <button class="btn-icon modal-close" @click="$emit('close')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body" style="text-align:center">
+                    <img v-if="qrUrl" :src="qrUrl" alt="QR Code" style="max-width:200px;border-radius:8px">
+                    <p style="margin-top:12px;font-size:13px;color:var(--color-text-muted)">扫描二维码查看内容</p>
+                </div>
+            </div>
+        </div>
+    `
+};
+
+// 分享卡片弹窗
+const ShareCardModalComponent = {
+    props: { show: Boolean, cardUrl: String },
+    emits: ['close', 'download'],
+    template: `
+        <div class="modal-overlay" :class="{ show: show }" role="dialog" aria-modal="true" @click.self="$emit('close')">
+            <div class="modal" style="max-width:400px">
+                <div class="modal-header">
+                    <h3>🖼️ 分享卡片</h3>
+                    <div class="modal-header-actions">
+                        <button class="btn-primary" @click="$emit('download')">下载</button>
+                        <button class="btn-icon modal-close" @click="$emit('close')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-body" style="text-align:center">
+                    <img v-if="cardUrl" :src="cardUrl" alt="Share Card" style="max-width:100%;border-radius:8px">
+                </div>
+            </div>
+        </div>
+    `
+};
+
+// 文本对比组件 (v29.0)
+const TextDiffComponent = {
+    props: { show: Boolean, original: String, transformed: String },
+    emits: ['close'],
+    methods: {
+        escapeHtml(text) { const d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
+    },
+    template: `
+        <div class="modal-overlay" :class="{ show: show }" role="dialog" aria-modal="true" @click.self="$emit('close')">
+            <div class="modal" style="max-width:800px">
+                <div class="modal-header">
+                    <h3>📊 文本对比</h3>
+                    <button class="btn-icon modal-close" @click="$emit('close')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="diff-view">
+                        <div class="diff-panel">
+                            <div class="diff-header">原文</div>
+                            <pre style="white-space:pre-wrap">{{ escapeHtml(original) }}</pre>
+                        </div>
+                        <div class="diff-panel">
+                            <div class="diff-header">转换后</div>
+                            <pre style="white-space:pre-wrap">{{ escapeHtml(transformed) }}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `
+};
+
+// 快捷短语面板组件 (v33.0)
+const PhrasePanelComponent = {
+    props: { show: Boolean, phrases: Array },
+    emits: ['close', 'insert'],
+    methods: {
+        escapeHtml(text) { const d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
+    },
+    template: `
+        <div class="modal-overlay" :class="{ show: show }" role="dialog" aria-modal="true" @click.self="$emit('close')">
+            <div class="modal" style="max-width:400px">
+                <div class="modal-header">
+                    <h3>💬 快捷短语</h3>
+                    <button class="btn-icon modal-close" @click="$emit('close')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="phrase-panel">
+                        <div v-for="p in phrases" :key="p.id" class="phrase-item" @click="$emit('insert', p.text)" :title="p.category">
+                            {{ escapeHtml(p.text) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `
+};
+
 // 设置弹窗组件（AI 模型选择）
 const SettingsModalComponent = {
     props: { show: Boolean },
@@ -1026,7 +1370,15 @@ const app = createApp({
         'doc-manager': DocManagerComponent,
         'settings-modal': SettingsModalComponent,
         'envelope': EnvelopeComponent,
-        'toast': ToastComponent
+        'toast': ToastComponent,
+        'shortcuts-modal': ShortcutsModalComponent,
+        'version-history-modal': VersionHistoryModalComponent,
+        'find-replace-bar': FindReplaceBarComponent,
+        'reading-mode': ReadingModeComponent,
+        'qr-code-modal': QRCodeModalComponent,
+        'share-card-modal': ShareCardModalComponent,
+        'text-diff': TextDiffComponent,
+        'phrase-panel': PhrasePanelComponent,
     },
     setup() {
         // ===== 状态管理 =====
@@ -1096,6 +1448,43 @@ const app = createApp({
         let autoSaveTimer = null;
         let toastTimer = null;
         let statusTimer = null;
+
+        // ===== v21-v53: 新增状态 =====
+        // v21.0: 快捷键面板
+        const showShortcuts = ref(false);
+        // v23.0: 阅读模式
+        const isReadingMode = ref(false);
+        // v24.0: 全屏专注
+        const isFocusMode = ref(false);
+        // v26.0: 撤销/重做
+        const canUndo = computed(() => store.getState().undoStack.length > 1);
+        const canRedo = computed(() => store.getState().redoStack.length > 0);
+        // v29.0: 文本对比
+        const showDiff = ref(false);
+        // v30.0: 版本历史
+        const showVersions = ref(false);
+        const versions = computed(() => store.getState().versions || []);
+        // v33.0: 快捷短语
+        const showPhrasePanel = ref(false);
+        const phrases = computed(() => store.getState().phrases || []);
+        // v45.0: 字体大小
+        const editorFontSize = computed(() => store.getState().settings.editorFontSize || 18);
+        // v46.0: 行距
+        const lineHeight = computed(() => store.getState().settings.lineHeight || 2);
+        // v47.0: 段落缩进
+        const textIndent = computed(() => store.getState().settings.textIndent || 0);
+        // v48.0: 文本对齐
+        const textAlign = computed(() => store.getState().settings.textAlign || 'left');
+        // v49.0: 查找替换
+        const showFindReplace = ref(false);
+        // v52.0: 水印
+        const showWatermark = computed(() => store.getState().settings.watermark?.enabled || false);
+        // v39.0: 分享卡片
+        const showShareCard = ref(false);
+        const shareCardUrl = ref('');
+        // v40.0: 二维码
+        const showQRCode = ref(false);
+        const qrUrl = ref('');
 
         // ===== 计算属性 =====
         const styles = computed(() => {
@@ -1673,20 +2062,212 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             showToastMsg('历史记录已清空', 'success');
         }
 
+        // ===== v21-v53: 新增功能处理 =====
+
+        // v21.0: 快捷键面板
+        function onShortcuts() { showShortcuts.value = !showShortcuts.value; }
+
+        // v23.0: 阅读模式
+        function onReadingMode() { isReadingMode.value = !isReadingMode.value; }
+
+        // v24.0: 全屏专注
+        function onFocusMode() {
+            isFocusMode.value = !isFocusMode.value;
+            showToastMsg(isFocusMode.value ? '已进入全屏专注模式' : '已退出全屏专注模式', 'success');
+        }
+
+        // v26.0: 撤销/重做
+        function onUndo() {
+            const prev = store.undo();
+            if (prev !== null) {
+                content.value = prev;
+                showToastMsg('已撤销', 'success');
+            }
+        }
+        function onRedo() {
+            const next = store.redo();
+            if (next !== null) {
+                content.value = next;
+                showToastMsg('已重做', 'success');
+            }
+        }
+
+        // v29.0: 文本对比
+        function onDiff() { showDiff.value = !showDiff.value; }
+
+        // v30.0: 版本历史
+        function onVersions() { showVersions.value = !showVersions.value; }
+        function onSaveVersion() {
+            store.saveVersion('手动保存');
+            showToastMsg('版本已保存', 'success');
+        }
+        function onRestoreVersion(id) {
+            store.restoreVersion(id);
+            content.value = store.getState().editor.content;
+            showToastMsg('版本已恢复', 'success');
+        }
+        function onDeleteVersion(id) {
+            store.deleteVersion(id);
+            showToastMsg('版本已删除', 'success');
+        }
+
+        // v33.0: 快捷短语
+        function onPhrase() { showPhrasePanel.value = !showPhrasePanel.value; }
+        function onInsertPhrase(text) {
+            content.value += text;
+            showPhrasePanel.value = false;
+            showToastMsg('短语已插入', 'success');
+        }
+
+        // v45.0: 字体大小
+        function onFontSizeChange(delta) {
+            const settings = store.getState().settings;
+            const newSize = Math.min(32, Math.max(12, settings.editorFontSize + delta));
+            store.set('settings.editorFontSize', newSize);
+        }
+
+        // v46.0: 行距
+        function onLineHeightChange(delta) {
+            const settings = store.getState().settings;
+            const newLH = Math.min(3, Math.max(1, +(settings.lineHeight + delta).toFixed(1)));
+            store.set('settings.lineHeight', newLH);
+        }
+
+        // v47.0: 段落缩进
+        function onTextIndentChange(delta) {
+            const settings = store.getState().settings;
+            const newIndent = Math.max(0, settings.textIndent + delta);
+            store.set('settings.textIndent', newIndent);
+        }
+
+        // v48.0: 文本对齐
+        function onTextAlignChange(align) {
+            store.set('settings.textAlign', align);
+        }
+
+        // v49.0: 查找替换
+        function onFindReplace() { showFindReplace.value = !showFindReplace.value; }
+        function onReplace(data) {
+            if (!data.find) return;
+            const idx = content.value.indexOf(data.find);
+            if (idx !== -1) {
+                content.value = content.value.substring(0, idx) + data.replace + content.value.substring(idx + data.find.length);
+                showToastMsg('已替换 1 处', 'success');
+            }
+        }
+        function onReplaceAll(data) {
+            if (!data.find) return;
+            const regex = new RegExp(data.find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+            const count = (content.value.match(regex) || []).length;
+            content.value = content.value.replace(regex, data.replace);
+            showToastMsg(`已替换 ${count} 处`, 'success');
+        }
+
+        // v52.0: 水印
+        function onWatermarkToggle() {
+            const settings = store.getState().settings;
+            store.set('settings.watermark', { enabled: !settings.watermark.enabled, text: settings.watermark.text || 'TextCraft' });
+            showToastMsg(showWatermark.value ? '已关闭水印' : '已开启水印', 'success');
+        }
+
+        // v36.0: 导出 Word
+        function onExportWord() {
+            if (!currentTransformed.value) { showToastMsg('请先选择风格并预览', 'warning'); return; }
+            const style = styles.value.find(s => s.key === currentStyle.value);
+            ExportService.exportWord({
+                styleName: style ? style.name : currentStyle.value,
+                content: currentTransformed.value,
+                time: new Date().toLocaleString('zh-CN'),
+            });
+            showToastMsg('Word 已导出', 'success');
+        }
+
+        // v37.0: 导出 Markdown
+        function onExportMarkdown() {
+            if (!currentTransformed.value) { showToastMsg('请先选择风格并预览', 'warning'); return; }
+            const style = styles.value.find(s => s.key === currentStyle.value);
+            ExportService.exportMarkdown({
+                styleName: style ? style.name : currentStyle.value,
+                content: currentTransformed.value,
+                original: currentOriginal.value,
+                time: new Date().toLocaleString('zh-CN'),
+            });
+            showToastMsg('Markdown 已导出', 'success');
+        }
+
+        // v39.0: 分享卡片
+        async function onExportShareCard() {
+            if (!currentTransformed.value) { showToastMsg('请先选择风格并预览', 'warning'); return; }
+            try {
+                const style = styles.value.find(s => s.key === currentStyle.value);
+                const url = await ExportService.generateShareCard({
+                    content: currentTransformed.value,
+                    styleName: style ? style.name : currentStyle.value,
+                });
+                shareCardUrl.value = url;
+                showShareCard.value = true;
+            } catch (e) {
+                console.error('Share card error:', e);
+                showToastMsg('分享卡片生成失败', 'error');
+            }
+        }
+        function onDownloadShareCard() {
+            if (!shareCardUrl.value) return;
+            const a = document.createElement('a');
+            a.href = shareCardUrl.value;
+            a.download = 'textcraft-card.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showToastMsg('卡片已下载', 'success');
+        }
+
+        // v40.0: 二维码
+        async function onExportQRCode() {
+            if (!currentTransformed.value) { showToastMsg('请先选择风格并预览', 'warning'); return; }
+            try {
+                const url = await ExportService.generateQRCode(window.location.href, 200);
+                qrUrl.value = url;
+                showQRCode.value = true;
+            } catch (e) {
+                console.error('QR code error:', e);
+                showToastMsg('二维码生成失败', 'error');
+            }
+        }
+
         // ===== 监听 =====
         watch(content, () => { debouncedAutoSave(); });
 
         // ===== 快捷键 =====
         function handleKeydown(e) {
+            // 忽略输入框内的快捷键（除了 Ctrl+F 等全局快捷键）
+            const tag = e.target.tagName;
+            const isInput = tag === 'INPUT' || tag === 'TEXTAREA';
+
             if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); onSave(); }
             if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); onClear(); }
             if ((e.ctrlKey || e.metaKey) && e.key === 'p') { e.preventDefault(); onPrint(); }
             if ((e.ctrlKey || e.metaKey) && e.key === 't') { e.preventDefault(); toggleDarkTheme(); }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); onUndo(); }
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); onRedo(); }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); onFindReplace(); }
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'R') { e.preventDefault(); onReadingMode(); }
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') { e.preventDefault(); onFocusMode(); }
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'V') { e.preventDefault(); onVersions(); }
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'K') { e.preventDefault(); onShortcuts(); }
             if (e.key === 'Escape') {
                 showLinkModal.value = false;
                 showTemplateModal.value = false;
                 showHistoryModal.value = false;
                 showUserModal.value = false;
+                showShortcuts.value = false;
+                showVersions.value = false;
+                showDiff.value = false;
+                showPhrasePanel.value = false;
+                showFindReplace.value = false;
+                showShareCard.value = false;
+                showQRCode.value = false;
+                isReadingMode.value = false;
             }
         }
 
@@ -1736,7 +2317,24 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             onNavChange, toggleSidebar,
             documents, currentDocId, currentDoc, showDocManager, favorites,
             onCreateDocument, onSwitchDocument, onDeleteDocument, onRenameDocument, onSaveDocument,
-            useTemplate, useHistoryItem, generateLinkFromHistory, deleteHistoryItem, onClearHistory
+            useTemplate, useHistoryItem, generateLinkFromHistory, deleteHistoryItem, onClearHistory,
+            // v21-v53: 新增功能
+            showShortcuts, onShortcuts,
+            isReadingMode, onReadingMode,
+            isFocusMode, onFocusMode,
+            canUndo, canRedo, onUndo, onRedo,
+            showDiff, onDiff,
+            showVersions, versions, onVersions, onSaveVersion, onRestoreVersion, onDeleteVersion,
+            showPhrasePanel, phrases, onPhrase, onInsertPhrase,
+            editorFontSize, onFontSizeChange,
+            lineHeight, onLineHeightChange,
+            textIndent, onTextIndentChange,
+            textAlign, onTextAlignChange,
+            showFindReplace, onFindReplace, onReplace, onReplaceAll,
+            showWatermark, onWatermarkToggle,
+            showShareCard, shareCardUrl, onExportShareCard, onDownloadShareCard,
+            showQRCode, qrUrl, onExportQRCode,
+            onExportWord, onExportMarkdown,
         };
     },
     template: `
@@ -1763,8 +2361,33 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                     :auto-save-status-show="autoSaveStatusShow"
                     :user-name="userName"
                     :is-listening="isListening"
+                    :can-undo="canUndo"
+                    :can-redo="canRedo"
+                    :editor-font-size="editorFontSize"
+                    :line-height="lineHeight"
+                    :text-indent="textIndent"
+                    :text-align="textAlign"
+                    :show-find-replace="showFindReplace"
+                    :is-focus-mode="isFocusMode"
+                    :show-watermark="showWatermark"
                     @clear="onClear"
                     @voice-input="onVoiceInput"
+                    @undo="onUndo"
+                    @redo="onRedo"
+                    @phrase="onPhrase"
+                    @versions="onVersions"
+                    @shortcuts="onShortcuts"
+                    @find-replace="onFindReplace"
+                    @reading-mode="onReadingMode"
+                    @focus-mode="onFocusMode"
+                    @diff="onDiff"
+                    @font-size-change="onFontSizeChange"
+                    @line-height-change="onLineHeightChange"
+                    @text-indent-change="onTextIndentChange"
+                    @text-align-change="onTextAlignChange"
+                    @watermark-toggle="onWatermarkToggle"
+                    @replace="onReplace"
+                    @replaceall="onReplaceAll"
                 />
                 <preview-panel
                     :current-style="currentStyle"
@@ -1843,6 +2466,20 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                 :animation-phase="envelopePhase"
                 @close="closeEnvelope"
             />
+            <!-- v21.0: 快捷键面板 -->
+            <shortcuts-modal :show="showShortcuts" @close="showShortcuts = false" />
+            <!-- v23.0: 阅读模式 -->
+            <reading-mode :show="isReadingMode" :content="content" :style-name="styles.find(s => s.key === currentStyle)?.name || ''" @close="isReadingMode = false" />
+            <!-- v29.0: 文本对比 -->
+            <text-diff :show="showDiff" :original="currentOriginal" :transformed="currentTransformed" @close="showDiff = false" />
+            <!-- v30.0: 版本历史 -->
+            <version-history-modal :show="showVersions" :versions="versions" @close="showVersions = false" @restore="onRestoreVersion" @delete="onDeleteVersion" @save="onSaveVersion" />
+            <!-- v33.0: 快捷短语 -->
+            <phrase-panel :show="showPhrasePanel" :phrases="phrases" @close="showPhrasePanel = false" @insert="onInsertPhrase" />
+            <!-- v39.0: 分享卡片 -->
+            <share-card-modal :show="showShareCard" :card-url="shareCardUrl" @close="showShareCard = false" @download="onDownloadShareCard" />
+            <!-- v40.0: 二维码 -->
+            <qr-code-modal :show="showQRCode" :qr-url="qrUrl" @close="showQRCode = false" />
             <toast :show="showToast" :message="toastMessage" :type="toastType" />
         </div>
     `
