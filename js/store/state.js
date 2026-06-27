@@ -16,6 +16,12 @@ const STORAGE_KEYS = {
     VERSIONS: 'textcraft_versions',
     CUSTOM_TEMPLATES: 'textcraft_custom_templates',
     UNDO_STACK: 'textcraft_undo_stack',
+    // v86.0-v100.0: 新增存储键
+    SHORTCUTS: 'textcraft_shortcuts',
+    MACROS: 'textcraft_macros',
+    WRITING_STATS: 'textcraft_writing_stats',
+    ACHIEVEMENTS: 'textcraft_achievements',
+    BACKUP: 'textcraft_backup',
 };
 
 const MAX_HISTORY = 100;
@@ -86,7 +92,37 @@ function createInitialState() {
             textAlign: 'left',
             // v52.0: 水印
             watermark: { enabled: false, text: '' },
+            // v86.0: 自定义快捷键
+            customShortcuts: {},
+            // v89.0: 主题色
+            themeColor: '#8b5e3c',
+            // v90.0: 背景图片
+            backgroundImage: '',
+            // v91.0: 打字机音效
+            typewriterSound: false,
+            // v92.0: 白噪音
+            whiteNoise: { enabled: false, type: 'rain' },
         },
+        // v56.0: 代码折叠
+        codeFolds: [],
+        // v60.0: 随机文本生成配置
+        randomTextConfig: { type: 'lorem', length: 100 },
+        // v86.0: 自定义快捷键
+        customShortcuts: {},
+        // v87.0: 宏
+        macros: [],
+        isRecordingMacro: false,
+        macroBuffer: [],
+        // v93.0: 番茄钟
+        pomodoro: { running: false, elapsed: 0, duration: 25 * 60, breaks: 0 },
+        // v94.0: 写作目标
+        writingGoal: { enabled: false, target: 1000, current: 0 },
+        // v95.0: 每日写作统计
+        writingStats: {},
+        // v96.0: 写作 streak
+        writingStreak: { current: 0, longest: 0, lastDate: null },
+        // v97.0: 成就
+        achievements: [],
         // UI 状态
         ui: {
             showLinkModal: false,
@@ -594,8 +630,200 @@ const StateStore = {
 
             const customTemplates = localStorage.getItem(STORAGE_KEYS.CUSTOM_TEMPLATES);
             if (customTemplates) this._state.customTemplates = JSON.parse(customTemplates);
+
+            // v86.0-v100.0: 加载新增数据
+            const shortcuts = localStorage.getItem(STORAGE_KEYS.SHORTCUTS);
+            if (shortcuts) this._state.customShortcuts = JSON.parse(shortcuts);
+
+            const macros = localStorage.getItem(STORAGE_KEYS.MACROS);
+            if (macros) this._state.macros = JSON.parse(macros);
+
+            const writingStats = localStorage.getItem(STORAGE_KEYS.WRITING_STATS);
+            if (writingStats) this._state.writingStats = JSON.parse(writingStats);
+
+            const achievements = localStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS);
+            if (achievements) this._state.achievements = JSON.parse(achievements);
         } catch (e) {
             console.warn('Failed to load from storage:', e);
+        }
+    },
+
+    // ==================== v86.0-v100.0: 新增保存方法 ====================
+
+    _saveShortcuts() {
+        try { localStorage.setItem(STORAGE_KEYS.SHORTCUTS, JSON.stringify(this._state.customShortcuts)); } catch (e) { console.warn('Save shortcuts failed:', e); }
+    },
+
+    _saveMacros() {
+        try { localStorage.setItem(STORAGE_KEYS.MACROS, JSON.stringify(this._state.macros)); } catch (e) { console.warn('Save macros failed:', e); }
+    },
+
+    _saveWritingStats() {
+        try { localStorage.setItem(STORAGE_KEYS.WRITING_STATS, JSON.stringify(this._state.writingStats)); } catch (e) { console.warn('Save writing stats failed:', e); }
+    },
+
+    _saveAchievements() {
+        try { localStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(this._state.achievements)); } catch (e) { console.warn('Save achievements failed:', e); }
+    },
+
+    // v86.0: 自定义快捷键
+    setCustomShortcut(key, combo) {
+        this._state.customShortcuts[key] = combo;
+        this._saveShortcuts();
+    },
+
+    // v87.0: 宏
+    startMacroRecording() {
+        this._state.isRecordingMacro = true;
+        this._state.macroBuffer = [];
+    },
+
+    stopMacroRecording(name = '未命名宏') {
+        this._state.isRecordingMacro = false;
+        this._state.macros.push({ id: this._generateId(), name, actions: [...this._state.macroBuffer], createdAt: new Date().toISOString() });
+        this._state.macroBuffer = [];
+        this._saveMacros();
+    },
+
+    recordMacroAction(action) {
+        if (this._state.isRecordingMacro) {
+            this._state.macroBuffer.push(action);
+        }
+    },
+
+    playMacro(macroId) {
+        const macro = this._state.macros.find(m => m.id === macroId);
+        if (!macro) return null;
+        return macro.actions;
+    },
+
+    deleteMacro(macroId) {
+        this._state.macros = this._state.macros.filter(m => m.id !== macroId);
+        this._saveMacros();
+    },
+
+    // v93.0: 番茄钟
+    startPomodoro() {
+        this._state.pomodoro.running = true;
+        this._state.pomodoro.elapsed = 0;
+    },
+
+    stopPomodoro() {
+        this._state.pomodoro.running = false;
+    },
+
+    tickPomodoro() {
+        if (this._state.pomodoro.running) {
+            this._state.pomodoro.elapsed++;
+            if (this._state.pomodoro.elapsed >= this._state.pomodoro.duration) {
+                this._state.pomodoro.running = false;
+                this._state.pomodoro.breaks++;
+                return true; // 完成
+            }
+        }
+        return false;
+    },
+
+    resetPomodoro() {
+        this._state.pomodoro.elapsed = 0;
+        this._state.pomodoro.running = false;
+    },
+
+    // v94.0: 写作目标
+    updateWritingGoal(target) {
+        this._state.writingGoal.target = target;
+        this._state.writingGoal.enabled = true;
+        this._state.writingGoal.current = this._state.editor.wordCount;
+    },
+
+    checkWritingGoal() {
+        this._state.writingGoal.current = this._state.editor.wordCount;
+        return this._state.writingGoal.current >= this._state.writingGoal.target;
+    },
+
+    // v95.0: 每日写作统计
+    recordWritingStats(wordCount) {
+        const today = new Date().toISOString().split('T')[0];
+        if (!this._state.writingStats[today]) {
+            this._state.writingStats[today] = { wordCount: 0, sessions: 0, timeSpent: 0 };
+        }
+        this._state.writingStats[today].wordCount += wordCount;
+        this._state.writingStats[today].sessions++;
+        this._saveWritingStats();
+    },
+
+    // v96.0: 写作 streak
+    updateWritingStreak() {
+        const today = new Date().toISOString().split('T')[0];
+        const streak = this._state.writingStreak;
+        if (streak.lastDate === today) return;
+
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        if (streak.lastDate === yesterdayStr) {
+            streak.current++;
+        } else if (streak.lastDate !== today) {
+            streak.current = 1;
+        }
+        streak.lastDate = today;
+        if (streak.current > streak.longest) streak.longest = streak.current;
+    },
+
+    // v97.0: 成就系统
+    unlockAchievement(id) {
+        const exists = this._state.achievements.find(a => a.id === id);
+        if (exists) return false;
+        this._state.achievements.push({ id, unlockedAt: new Date().toISOString() });
+        this._saveAchievements();
+        return true;
+    },
+
+    hasAchievement(id) {
+        return this._state.achievements.some(a => a.id === id);
+    },
+
+    // v98.0: 数据备份
+    exportBackup() {
+        return JSON.stringify({
+            history: this._state.history,
+            documents: this._state.documents,
+            favorites: this._state.favorites,
+            settings: this._state.settings,
+            tags: this._state.tags,
+            phrases: this._state.phrases,
+            versions: this._state.versions,
+            customTemplates: this._state.customTemplates,
+            macros: this._state.macros,
+            writingStats: this._state.writingStats,
+            achievements: this._state.achievements,
+            customShortcuts: this._state.customShortcuts,
+            writingStreak: this._state.writingStreak,
+            exportedAt: new Date().toISOString(),
+        }, null, 2);
+    },
+
+    importBackup(jsonStr) {
+        try {
+            const data = JSON.parse(jsonStr);
+            if (data.history) { this._state.history = data.history; this._saveHistory(); }
+            if (data.documents) { this._state.documents = data.documents; this._saveDocuments(); }
+            if (data.favorites) { this._state.favorites = data.favorites; this._saveFavorites(); }
+            if (data.settings) { this._state.settings = { ...this._state.settings, ...data.settings }; }
+            if (data.tags) { this._state.tags = data.tags; this._saveTags(); }
+            if (data.phrases) { this._state.phrases = data.phrases; this._savePhrases(); }
+            if (data.versions) { this._state.versions = data.versions; this._saveVersions(); }
+            if (data.customTemplates) { this._state.customTemplates = data.customTemplates; this._saveCustomTemplates(); }
+            if (data.macros) { this._state.macros = data.macros; this._saveMacros(); }
+            if (data.writingStats) { this._state.writingStats = data.writingStats; this._saveWritingStats(); }
+            if (data.achievements) { this._state.achievements = data.achievements; this._saveAchievements(); }
+            if (data.customShortcuts) { this._state.customShortcuts = data.customShortcuts; this._saveShortcuts(); }
+            if (data.writingStreak) { this._state.writingStreak = data.writingStreak; }
+            return true;
+        } catch (e) {
+            console.error('Import backup failed:', e);
+            return false;
         }
     },
 };

@@ -642,7 +642,7 @@ const EditorPanelComponent = {
     emits: ['update:content', 'clear', 'template', 'history', 'user', 'voice-input',
         'undo', 'redo', 'phrase', 'versions', 'shortcuts', 'find-replace',
         'reading-mode', 'focus-mode', 'diff', 'font-size-change', 'line-height-change',
-        'text-indent-change', 'text-align-change', 'watermark-toggle'],
+        'text-indent-change', 'text-align-change', 'watermark-toggle', 'tools', 'analysis'],
     methods: {
         onInput(event) {
             this.$emit('update:content', event.target.value);
@@ -722,6 +722,9 @@ const EditorPanelComponent = {
                 <button class="toolbar-btn" :class="{ active: isFocusMode }" title="全屏专注" @click="$emit('focus-mode')">🎯</button>
                 <!-- v52.0: 水印 -->
                 <button class="toolbar-btn" title="水印" @click="$emit('watermark-toggle')">💧</button>
+                <!-- v54-v100: 工具箱 & 分析 -->
+                <button class="toolbar-btn" title="工具箱" @click="$emit('tools')">🛠️</button>
+                <button class="toolbar-btn" title="文本分析" @click="$emit('analysis')">📊</button>
                 <!-- v21.0: 快捷键 -->
                 <button class="toolbar-btn" title="快捷键" @click="$emit('shortcuts')">⌨</button>
             </div>
@@ -1164,6 +1167,474 @@ const QRCodeModalComponent = {
     `
 };
 
+// ==================== v54-v100: 工具箱弹窗组件 ====================
+const ToolsModalComponent = {
+    props: { show: Boolean },
+    emits: ['close', 'apply-tool'],
+    data() {
+        return {
+            activeTab: 'encode',
+            tabs: [
+                { key: 'encode', name: '编码/解码', icon: '🔐' },
+                { key: 'format', name: '格式化', icon: '📋' },
+                { key: 'convert', name: '转换工具', icon: '🔄' },
+                { key: 'generate', name: '生成器', icon: '🎲' },
+                { key: 'regex', name: '正则测试', icon: '🔍' },
+                { key: 'crypto', name: '加密/哈希', icon: '🔒' },
+            ],
+            // encode
+            encodeInput: '',
+            encodeOutput: '',
+            encodeType: 'base64-encode',
+            // format
+            formatInput: '',
+            formatOutput: '',
+            formatType: 'json',
+            // convert
+            convertInput: '',
+            convertOutput: '',
+            convertType: 'upper',
+            // generate
+            genType: 'password',
+            genOutput: '',
+            genLength: 16,
+            genCount: 1,
+            // regex
+            regexText: '',
+            regexPattern: '',
+            regexFlags: 'g',
+            regexResult: null,
+            // crypto
+            cryptoInput: '',
+            cryptoOutput: '',
+            cryptoType: 'hash-sha256',
+            cryptoPassword: '',
+        };
+    },
+    watch: {
+        encodeInput() { this.runEncode(); },
+        encodeType() { this.runEncode(); },
+        formatInput() { this.runFormat(); },
+        formatType() { this.runFormat(); },
+        convertInput() { this.runConvert(); },
+        convertType() { this.runConvert(); },
+        regexText() { this.runRegex(); },
+        regexPattern() { this.runRegex(); },
+        cryptoInput() { this.runCrypto(); },
+        cryptoType() { this.runCrypto(); },
+    },
+    methods: {
+        escapeHtml(text) { const d = document.createElement('div'); d.textContent = text; return d.innerHTML; },
+        runEncode() {
+            if (!this.encodeInput) { this.encodeOutput = ''; return; }
+            const s = ExportService;
+            switch (this.encodeType) {
+                case 'base64-encode': this.encodeOutput = s.base64Encode(this.encodeInput); break;
+                case 'base64-decode': this.encodeOutput = s.base64Decode(this.encodeInput); break;
+                case 'url-encode': this.encodeOutput = s.urlEncode(this.encodeInput); break;
+                case 'url-decode': this.encodeOutput = s.urlDecode(this.encodeInput); break;
+            }
+        },
+        runFormat() {
+            if (!this.formatInput) { this.formatOutput = ''; return; }
+            const s = ExportService;
+            switch (this.formatType) {
+                case 'json': this.formatOutput = s.formatJSON(this.formatInput); break;
+                case 'xml': this.formatOutput = s.formatXML(this.formatInput); break;
+                case 'sql': this.formatOutput = s.formatSQL(this.formatInput); break;
+                case 'csv': this.formatOutput = JSON.stringify(s.parseCSV(this.formatInput), null, 2); break;
+            }
+        },
+        runConvert() {
+            if (!this.convertInput) { this.convertOutput = ''; return; }
+            const s = ExportService;
+            switch (this.convertType) {
+                case 'upper': this.convertOutput = s.caseConvert(this.convertInput, 'upper'); break;
+                case 'lower': this.convertOutput = s.caseConvert(this.convertInput, 'lower'); break;
+                case 'title': this.convertOutput = s.caseConvert(this.convertInput, 'title'); break;
+                case 'reverse': this.convertOutput = s.reverseText(this.convertInput); break;
+                case 'fullwidth': this.convertOutput = s.fullWidthConvert(this.convertInput, true); break;
+                case 'halfwidth': this.convertOutput = s.fullWidthConvert(this.convertInput, false); break;
+                case 'traditional': this.convertOutput = s.traditionalConvert(this.convertInput, true); break;
+                case 'simplified': this.convertOutput = s.traditionalConvert(this.convertInput, false); break;
+                case 'pinyin': this.convertOutput = s.toPinyin(this.convertInput); break;
+                case 'html2text': this.convertOutput = s.htmlToText(this.convertInput); break;
+                case 'text2html': this.convertOutput = s.textToHTML(this.convertInput); break;
+                case 'clean': this.convertOutput = s.cleanFormat(this.convertInput); break;
+                case 'dedup-line': this.convertOutput = s.deduplicateText(this.convertInput, 'line'); break;
+                case 'dedup-para': this.convertOutput = s.deduplicateText(this.convertInput, 'paragraph'); break;
+                case 'smart-split': this.convertOutput = s.smartSplit(this.convertInput); break;
+            }
+        },
+        runGenerate() {
+            const s = ExportService;
+            switch (this.genType) {
+                case 'password':
+                    this.genOutput = Array.from({ length: this.genCount }, () => s.generatePassword(this.genLength)).join('\n');
+                    break;
+                case 'uuid':
+                    this.genOutput = s.generateUUID(this.genCount).join('\n');
+                    break;
+                case 'lorem':
+                    this.genOutput = s.generateLoremIpsum(this.genCount);
+                    break;
+                case 'random-text':
+                    this.genOutput = s.generateRandomText('chinese', this.genLength);
+                    break;
+            }
+        },
+        runRegex() {
+            if (!this.regexText || !this.regexPattern) { this.regexResult = null; return; }
+            this.regexResult = ExportService.testRegex(this.regexText, this.regexPattern, this.regexFlags);
+        },
+        async runCrypto() {
+            if (!this.cryptoInput) { this.cryptoOutput = ''; return; }
+            const s = ExportService;
+            if (this.cryptoType === 'hash-sha256') {
+                this.cryptoOutput = await s.calculateHash(this.cryptoInput, 'SHA-256');
+            } else if (this.cryptoType === 'hash-md5') {
+                this.cryptoOutput = await s.calculateHash(this.cryptoInput, 'SHA-1');
+            } else if (this.cryptoType === 'encrypt') {
+                if (this.cryptoPassword) this.cryptoOutput = s.encryptText(this.cryptoInput, this.cryptoPassword);
+            } else if (this.cryptoType === 'decrypt') {
+                if (this.cryptoPassword) this.cryptoOutput = s.decryptText(this.cryptoInput, this.cryptoPassword);
+            }
+        },
+        copyOutput(text) {
+            if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                navigator.clipboard.writeText(text);
+            }
+        },
+        applyToEditor() {
+            const outputs = { encode: this.encodeOutput, format: this.formatOutput, convert: this.convertOutput };
+            const out = outputs[this.activeTab] || '';
+            if (out) this.$emit('apply-tool', out);
+        },
+    },
+    template: `
+        <div class="modal-overlay" :class="{ show: show }" role="dialog" aria-modal="true" @click.self="$emit('close')">
+            <div class="modal tools-modal">
+                <div class="modal-header">
+                    <h3>🛠️ 文本工具箱</h3>
+                    <button class="btn-icon modal-close" @click="$emit('close')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="tools-tabs">
+                        <button v-for="t in tabs" :key="t.key" class="tools-tab-btn" :class="{ active: t.key === activeTab }" @click="activeTab = t.key">
+                            <span class="tools-tab-icon">{{ t.icon }}</span>
+                            <span>{{ t.name }}</span>
+                        </button>
+                    </div>
+                    <div class="tools-content">
+                        <!-- 编码/解码 -->
+                        <div v-if="activeTab === 'encode'" class="tools-panel">
+                            <div class="tools-options">
+                                <select v-model="encodeType">
+                                    <option value="base64-encode">Base64 编码</option>
+                                    <option value="base64-decode">Base64 解码</option>
+                                    <option value="url-encode">URL 编码</option>
+                                    <option value="url-decode">URL 解码</option>
+                                </select>
+                            </div>
+                            <div class="tools-io">
+                                <textarea v-model="encodeInput" placeholder="输入文本..."></textarea>
+                                <div class="tools-arrow">↓</div>
+                                <textarea :value="encodeOutput" readonly placeholder="结果..."></textarea>
+                            </div>
+                            <div class="tools-actions">
+                                <button class="btn-secondary" @click="copyOutput(encodeOutput)">复制结果</button>
+                                <button class="btn-primary" @click="applyToEditor">应用到编辑器</button>
+                            </div>
+                        </div>
+                        <!-- 格式化 -->
+                        <div v-if="activeTab === 'format'" class="tools-panel">
+                            <div class="tools-options">
+                                <select v-model="formatType">
+                                    <option value="json">JSON 格式化</option>
+                                    <option value="xml">XML 格式化</option>
+                                    <option value="sql">SQL 格式化</option>
+                                    <option value="csv">CSV 解析</option>
+                                </select>
+                            </div>
+                            <div class="tools-io">
+                                <textarea v-model="formatInput" placeholder="输入文本..."></textarea>
+                                <div class="tools-arrow">↓</div>
+                                <textarea :value="formatOutput" readonly placeholder="结果..."></textarea>
+                            </div>
+                            <div class="tools-actions">
+                                <button class="btn-secondary" @click="copyOutput(formatOutput)">复制结果</button>
+                                <button class="btn-primary" @click="applyToEditor">应用到编辑器</button>
+                            </div>
+                        </div>
+                        <!-- 转换工具 -->
+                        <div v-if="activeTab === 'convert'" class="tools-panel">
+                            <div class="tools-options">
+                                <select v-model="convertType">
+                                    <option value="upper">转大写</option>
+                                    <option value="lower">转小写</option>
+                                    <option value="title">标题大小写</option>
+                                    <option value="reverse">文本反转</option>
+                                    <option value="fullwidth">转全角</option>
+                                    <option value="halfwidth">转半角</option>
+                                    <option value="traditional">简体→繁体</option>
+                                    <option value="simplified">繁体→简体</option>
+                                    <option value="pinyin">转拼音</option>
+                                    <option value="html2text">HTML→文本</option>
+                                    <option value="text2html">文本→HTML</option>
+                                    <option value="clean">格式清理</option>
+                                    <option value="dedup-line">行去重</option>
+                                    <option value="dedup-para">段落去重</option>
+                                    <option value="smart-split">智能分段</option>
+                                </select>
+                            </div>
+                            <div class="tools-io">
+                                <textarea v-model="convertInput" placeholder="输入文本..."></textarea>
+                                <div class="tools-arrow">↓</div>
+                                <textarea :value="convertOutput" readonly placeholder="结果..."></textarea>
+                            </div>
+                            <div class="tools-actions">
+                                <button class="btn-secondary" @click="copyOutput(convertOutput)">复制结果</button>
+                                <button class="btn-primary" @click="applyToEditor">应用到编辑器</button>
+                            </div>
+                        </div>
+                        <!-- 生成器 -->
+                        <div v-if="activeTab === 'generate'" class="tools-panel">
+                            <div class="tools-options">
+                                <select v-model="genType">
+                                    <option value="password">密码生成</option>
+                                    <option value="uuid">UUID 生成</option>
+                                    <option value="lorem">Lorem Ipsum</option>
+                                    <option value="random-text">随机中文</option>
+                                </select>
+                                <div class="tools-gen-opts">
+                                    <label>长度: <input type="number" v-model.number="genLength" min="1" max="1000"></label>
+                                    <label>数量: <input type="number" v-model.number="genCount" min="1" max="20"></label>
+                                </div>
+                                <button class="btn-primary" @click="runGenerate">生成</button>
+                            </div>
+                            <div class="tools-io">
+                                <textarea :value="genOutput" readonly placeholder="生成结果..."></textarea>
+                            </div>
+                            <div class="tools-actions">
+                                <button class="btn-secondary" @click="copyOutput(genOutput)">复制结果</button>
+                                <button class="btn-primary" @click="applyToEditor">应用到编辑器</button>
+                            </div>
+                        </div>
+                        <!-- 正则测试 -->
+                        <div v-if="activeTab === 'regex'" class="tools-panel">
+                            <div class="tools-options">
+                                <input v-model="regexPattern" placeholder="正则表达式...">
+                                <input v-model="regexFlags" placeholder="标志 (g)" style="width:60px">
+                            </div>
+                            <textarea v-model="regexText" placeholder="测试文本..." style="width:100%;min-height:100px;margin-bottom:8px"></textarea>
+                            <div v-if="regexResult" class="tools-regex-result">
+                                <p>匹配数: <strong>{{ regexResult.count }}</strong></p>
+                                <p v-if="regexResult.valid">匹配: <code>{{ escapeHtml(JSON.stringify(regexResult.matches.slice(0, 20))) }}</code></p>
+                                <p v-if="!regexResult.valid" style="color:var(--color-danger)">错误: {{ regexResult.error }}</p>
+                            </div>
+                        </div>
+                        <!-- 加密/哈希 -->
+                        <div v-if="activeTab === 'crypto'" class="tools-panel">
+                            <div class="tools-options">
+                                <select v-model="cryptoType">
+                                    <option value="hash-sha256">SHA-256 哈希</option>
+                                    <option value="hash-md5">SHA-1 哈希</option>
+                                    <option value="encrypt">XOR 加密</option>
+                                    <option value="decrypt">XOR 解密</option>
+                                </select>
+                                <input v-if="cryptoType === 'encrypt' || cryptoType === 'decrypt'" v-model="cryptoPassword" placeholder="密码/密钥">
+                            </div>
+                            <div class="tools-io">
+                                <textarea v-model="cryptoInput" placeholder="输入文本..."></textarea>
+                                <div class="tools-arrow">↓</div>
+                                <textarea :value="cryptoOutput" readonly placeholder="结果..."></textarea>
+                            </div>
+                            <div class="tools-actions">
+                                <button class="btn-secondary" @click="copyOutput(cryptoOutput)">复制结果</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `
+};
+
+// ==================== v54-v100: 文本分析面板组件 ====================
+const TextAnalysisPanelComponent = {
+    props: { show: Boolean, content: String },
+    emits: ['close'],
+    computed: {
+        stats() {
+            if (!this.content) return null;
+            return ExportService.getTextStats(this.content);
+        },
+        readingTime() {
+            if (!this.content) return '';
+            return ExportService.estimateReadingTime(this.content);
+        },
+        density() {
+            if (!this.content) return null;
+            return ExportService.analyzeTextDensity(this.content);
+        },
+        keywords() {
+            if (!this.content) return [];
+            return ExportService.extractKeywords(this.content, 15);
+        },
+        sentiment() {
+            if (!this.content) return null;
+            return ExportService.analyzeSentiment(this.content);
+        },
+        difficulty() {
+            if (!this.content) return null;
+            return ExportService.assessTextDifficulty(this.content);
+        },
+        grammarIssues() {
+            if (!this.content) return [];
+            return ExportService.checkGrammar(this.content);
+        },
+        duplicateLines() {
+            if (!this.content) return [];
+            return ExportService.findDuplicateLines(this.content);
+        },
+        charFreq() {
+            if (!this.content) return [];
+            return ExportService.analyzeCharFrequency(this.content, 20);
+        },
+        sentenceLen() {
+            if (!this.content) return null;
+            return ExportService.analyzeSentenceLength(this.content);
+        },
+        wordFreq() {
+            if (!this.content) return [];
+            return ExportService.wordFrequency(this.content, 15);
+        },
+    },
+    template: `
+        <div class="modal-overlay" :class="{ show: show }" role="dialog" aria-modal="true" @click.self="$emit('close')">
+            <div class="modal analysis-modal">
+                <div class="modal-header">
+                    <h3>📊 文本分析面板</h3>
+                    <button class="btn-icon modal-close" @click="$emit('close')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <template v-if="!content">
+                        <div class="analysis-empty"><p>请先输入文本内容</p></div>
+                    </template>
+                    <template v-else>
+                        <div class="analysis-grid">
+                            <!-- 基础统计 -->
+                            <div class="analysis-card">
+                                <h4>📈 基础统计</h4>
+                                <div class="analysis-stats">
+                                    <div class="stat-item"><span class="stat-label">总字符</span><span class="stat-value">{{ stats.chars }}</span></div>
+                                    <div class="stat-item"><span class="stat-label">不含空格</span><span class="stat-value">{{ stats.charsNoSpace }}</span></div>
+                                    <div class="stat-item"><span class="stat-label">英文单词</span><span class="stat-value">{{ stats.words }}</span></div>
+                                    <div class="stat-item"><span class="stat-label">中文字符</span><span class="stat-value">{{ stats.chineseChars }}</span></div>
+                                    <div class="stat-item"><span class="stat-label">句子数</span><span class="stat-value">{{ stats.sentences }}</span></div>
+                                    <div class="stat-item"><span class="stat-label">段落数</span><span class="stat-value">{{ stats.paragraphs }}</span></div>
+                                    <div class="stat-item"><span class="stat-label">行数</span><span class="stat-value">{{ stats.lines }}</span></div>
+                                    <div class="stat-item"><span class="stat-label">阅读时间</span><span class="stat-value">{{ readingTime }}</span></div>
+                                </div>
+                            </div>
+                            <!-- 文本密度 -->
+                            <div class="analysis-card">
+                                <h4>🔬 文本密度</h4>
+                                <div class="density-bars">
+                                    <div class="density-bar"><span>中文</span><div class="bar-bg"><div class="bar-fill" :style="{ width: density.chineseRatio + '%' }"></div></div><span>{{ density.chineseRatio }}%</span></div>
+                                    <div class="density-bar"><span>英文</span><div class="bar-bg"><div class="bar-fill" :style="{ width: density.englishRatio + '%' }"></div></div><span>{{ density.englishRatio }}%</span></div>
+                                    <div class="density-bar"><span>数字</span><div class="bar-bg"><div class="bar-fill" :style="{ width: density.numberRatio + '%' }"></div></div><span>{{ density.numberRatio }}%</span></div>
+                                    <div class="density-bar"><span>标点</span><div class="bar-bg"><div class="bar-fill" :style="{ width: density.punctuationRatio + '%' }"></div></div><span>{{ density.punctuationRatio }}%</span></div>
+                                    <div class="density-bar"><span>空格</span><div class="bar-bg"><div class="bar-fill" :style="{ width: density.spaceRatio + '%' }"></div></div><span>{{ density.spaceRatio }}%</span></div>
+                                </div>
+                            </div>
+                            <!-- 情感分析 -->
+                            <div class="analysis-card">
+                                <h4>💭 情感分析</h4>
+                                <div class="sentiment-display">
+                                    <div class="sentiment-label" :class="sentiment.label">{{ sentiment.label }}</div>
+                                    <div class="sentiment-score">得分: {{ sentiment.score }}</div>
+                                    <div class="sentiment-detail">正面: {{ sentiment.positive }} | 负面: {{ sentiment.negative }}</div>
+                                </div>
+                            </div>
+                            <!-- 文本难度 -->
+                            <div class="analysis-card">
+                                <h4>📚 文本难度</h4>
+                                <div class="difficulty-display">
+                                    <div class="difficulty-level">{{ difficulty.level }}</div>
+                                    <div class="difficulty-detail">平均句长: {{ difficulty.avgSentenceLen }} 字</div>
+                                </div>
+                            </div>
+                            <!-- 关键词 -->
+                            <div class="analysis-card">
+                                <h4>🔑 关键词提取</h4>
+                                <div class="keyword-cloud">
+                                    <span v-for="kw in keywords" :key="kw.word" class="keyword-tag" :style="{ fontSize: Math.max(12, kw.count * 4) + 'px' }">{{ kw.word }} ({{ kw.count }})</span>
+                                </div>
+                            </div>
+                            <!-- 词频统计 -->
+                            <div class="analysis-card">
+                                <h4>📝 词频统计</h4>
+                                <div class="word-freq-list">
+                                    <div v-for="w in wordFreq" :key="w.word" class="freq-item">
+                                        <span>{{ w.word }}</span>
+                                        <div class="freq-bar-bg"><div class="freq-bar-fill" :style="{ width: Math.min(100, w.count * 10) + '%' }"></div></div>
+                                        <span>{{ w.count }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 语法检查 -->
+                            <div class="analysis-card" v-if="grammarIssues.length">
+                                <h4>⚠️ 语法检查</h4>
+                                <div class="grammar-issues">
+                                    <div v-for="issue in grammarIssues" :key="issue.message" class="grammar-issue" :class="issue.type">
+                                        <span>{{ issue.message }}</span><span class="issue-count">×{{ issue.count }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 重复行 -->
+                            <div class="analysis-card" v-if="duplicateLines.length">
+                                <h4>🔁 重复行检测</h4>
+                                <div class="duplicate-list">
+                                    <div v-for="d in duplicateLines.slice(0, 10)" :key="d.line" class="duplicate-item">
+                                        <span class="dup-line">{{ d.line }}</span>
+                                        <span class="dup-info">第{{ d.firstOccurrence }}行、第{{ d.currentLine }}行</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 字符频率 -->
+                            <div class="analysis-card">
+                                <h4>🔤 字符频率 TOP10</h4>
+                                <div class="char-freq-list">
+                                    <div v-for="c in charFreq.slice(0, 10)" :key="c.char" class="char-freq-item">
+                                        <span class="char">{{ c.char }}</span>
+                                        <div class="char-bar-bg"><div class="char-bar-fill" :style="{ width: Math.min(100, c.count * 5) + '%' }"></div></div>
+                                        <span>{{ c.count }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 句子长度 -->
+                            <div class="analysis-card">
+                                <h4>📏 句子长度</h4>
+                                <div class="sentence-stats">
+                                    <div class="stat-item"><span>平均</span><span>{{ sentenceLen.avg }} 字</span></div>
+                                    <div class="stat-item"><span>最短</span><span>{{ sentenceLen.min }} 字</span></div>
+                                    <div class="stat-item"><span>最长</span><span>{{ sentenceLen.max }} 字</span></div>
+                                    <div class="stat-item"><span>总句数</span><span>{{ sentenceLen.total }}</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    `
+};
+
 // 分享卡片弹窗
 const ShareCardModalComponent = {
     props: { show: Boolean, cardUrl: String },
@@ -1379,6 +1850,8 @@ const app = createApp({
         'share-card-modal': ShareCardModalComponent,
         'text-diff': TextDiffComponent,
         'phrase-panel': PhrasePanelComponent,
+        'tools-modal': ToolsModalComponent,
+        'text-analysis-panel': TextAnalysisPanelComponent,
     },
     setup() {
         // ===== 状态管理 =====
@@ -1485,6 +1958,10 @@ const app = createApp({
         // v40.0: 二维码
         const showQRCode = ref(false);
         const qrUrl = ref('');
+
+        // v54-v100: 工具箱 & 分析面板
+        const showToolsModal = ref(false);
+        const showAnalysisPanel = ref(false);
 
         // ===== 计算属性 =====
         const styles = computed(() => {
@@ -2170,6 +2647,17 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             showToastMsg(showWatermark.value ? '已关闭水印' : '已开启水印', 'success');
         }
 
+        // v54-v100: 工具箱
+        function onTools() { showToolsModal.value = !showToolsModal.value; }
+        function onApplyTool(output) {
+            content.value = output;
+            showToolsModal.value = false;
+            showToastMsg('已应用到编辑器', 'success');
+        }
+
+        // v54-v100: 文本分析面板
+        function onAnalysis() { showAnalysisPanel.value = !showAnalysisPanel.value; }
+
         // v36.0: 导出 Word
         function onExportWord() {
             if (!currentTransformed.value) { showToastMsg('请先选择风格并预览', 'warning'); return; }
@@ -2267,6 +2755,8 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                 showFindReplace.value = false;
                 showShareCard.value = false;
                 showQRCode.value = false;
+                showToolsModal.value = false;
+                showAnalysisPanel.value = false;
                 isReadingMode.value = false;
             }
         }
@@ -2335,6 +2825,8 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             showShareCard, shareCardUrl, onExportShareCard, onDownloadShareCard,
             showQRCode, qrUrl, onExportQRCode,
             onExportWord, onExportMarkdown,
+            // v54-v100: 工具箱 & 分析面板
+            showToolsModal, showAnalysisPanel, onTools, onAnalysis, onApplyTool,
         };
     },
     template: `
@@ -2386,6 +2878,8 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                     @text-indent-change="onTextIndentChange"
                     @text-align-change="onTextAlignChange"
                     @watermark-toggle="onWatermarkToggle"
+                    @tools="onTools"
+                    @analysis="onAnalysis"
                     @replace="onReplace"
                     @replaceall="onReplaceAll"
                 />
@@ -2480,6 +2974,10 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             <share-card-modal :show="showShareCard" :card-url="shareCardUrl" @close="showShareCard = false" @download="onDownloadShareCard" />
             <!-- v40.0: 二维码 -->
             <qr-code-modal :show="showQRCode" :qr-url="qrUrl" @close="showQRCode = false" />
+            <!-- v54-v100: 工具箱 -->
+            <tools-modal :show="showToolsModal" @close="showToolsModal = false" @apply-tool="onApplyTool" />
+            <!-- v54-v100: 文本分析面板 -->
+            <text-analysis-panel :show="showAnalysisPanel" :content="content" @close="showAnalysisPanel = false" />
             <toast :show="showToast" :message="toastMessage" :type="toastType" />
         </div>
     `
