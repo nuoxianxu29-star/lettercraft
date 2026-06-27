@@ -1,7 +1,7 @@
 /* ============================================
-   TextCraft v12.0 - AI-Powered Text Processing System
+   TextCraft v13.0 - AI-Powered Text Processing System
    架构：Vue 3 + 模块化前端架构 (Store / Services / Router / UI)
-   功能：多模板智能文本生成 / 语义转换引擎 / 用户级历史记录 / 导出 JSON/文本 / 暗色主题 / Markdown渲染 / Mermaid流程图
+   功能：多模板智能文本生成 / 语义转换引擎 / 用户级历史记录 / 导出 JSON/文本 / 暗色主题 / Markdown渲染 / Mermaid流程图 / 多模型API选择
    ============================================ */
 
 /* --- CSS Variables --- */
@@ -2037,6 +2037,152 @@ body {
 .letter-view-card.official .letter-view-style-badge {
     background: #f0f0f0;
     color: #333;
+}
+
+/* ============================================
+   Settings Modal Styles
+   ============================================ */
+
+.settings-modal .modal {
+    max-width: 560px;
+}
+
+.settings-body {
+    padding: 20px;
+}
+
+.settings-section {
+    margin-bottom: 24px;
+}
+
+.settings-section h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.mode-selector {
+    display: flex;
+    gap: 12px;
+}
+
+.mode-option {
+    flex: 1;
+    padding: 16px;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mode-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.mode-option.active {
+    border-color: var(--color-primary);
+    background: var(--color-primary-bg, #f5f0e8);
+}
+
+.mode-option .mode-radio {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--color-border);
+    border-radius: 50%;
+    transition: all var(--transition-fast);
+}
+
+.mode-option.active .mode-radio {
+    border-color: var(--color-primary);
+}
+
+.mode-option.active .mode-radio::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    background: var(--color-primary);
+    border-radius: 50%;
+}
+
+.mode-label {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--color-text);
+}
+
+.mode-desc {
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
+.model-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-paper);
+    color: var(--color-text);
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text);
+    margin-bottom: 6px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-paper);
+    color: var(--color-text);
+    font-size: 14px;
+    font-family: var(--font-body);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-shadow);
+}
+
+.range-input {
+    width: 100%;
+    cursor: pointer;
+}
+
+.settings-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
 }
 
 /* ============================================

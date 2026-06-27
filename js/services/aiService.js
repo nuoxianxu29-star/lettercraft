@@ -9,12 +9,26 @@
  */
 
 const AIService = {
+    // 支持的模型列表
+    models: [
+        { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', icon: '🟢' },
+        { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', icon: '🟢' },
+        { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'OpenAI', icon: '🟢' },
+        { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', icon: '🟣' },
+        { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', provider: 'Anthropic', icon: '🟣' },
+        { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'Google', icon: '🔵' },
+        { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'Google', icon: '🔵' },
+        { id: 'qwen-plus', name: 'Qwen Plus', provider: '阿里云', icon: '🟠' },
+        { id: 'qwen-turbo', name: 'Qwen Turbo', provider: '阿里云', icon: '🟠' },
+        { id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'DeepSeek', icon: '🔴' },
+    ],
+
     // 配置
     config: {
         mode: 'local', // 'local' | 'api'
         apiKey: '',
-        apiEndpoint: '',
-        model: '',
+        apiEndpoint: 'https://api.openai.com/v1/chat/completions',
+        model: 'gpt-4o-mini',
         temperature: 0.7,
         maxTokens: 2000,
     },
@@ -122,6 +136,53 @@ const AIService = {
             name: this._getTaskName(key),
             description: this._getTaskDescription(key),
         }));
+    },
+
+    /**
+     * 获取可用模型列表
+     */
+    getAvailableModels() {
+        return this.models;
+    },
+
+    /**
+     * 获取当前配置
+     */
+    getConfig() {
+        return { ...this.config };
+    },
+
+    /**
+     * 更新配置
+     */
+    updateConfig(newConfig) {
+        Object.assign(this.config, newConfig);
+        this._saveConfig();
+    },
+
+    /**
+     * 保存配置到 localStorage
+     */
+    _saveConfig() {
+        try {
+            localStorage.setItem('textcraft_ai_config', JSON.stringify(this.config));
+        } catch (e) {
+            console.warn('Failed to save AI config:', e);
+        }
+    },
+
+    /**
+     * 从 localStorage 加载配置
+     */
+    _loadConfig() {
+        try {
+            const saved = localStorage.getItem('textcraft_ai_config');
+            if (saved) {
+                Object.assign(this.config, JSON.parse(saved));
+            }
+        } catch (e) {
+            console.warn('Failed to load AI config:', e);
+        }
     },
 
     // ==================== 内部方法 ====================

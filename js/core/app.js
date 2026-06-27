@@ -905,6 +905,112 @@ const PreviewPanelComponent = {
     `
 };
 
+// 设置弹窗组件（AI 模型选择）
+const SettingsModalComponent = {
+    props: { show: Boolean },
+    emits: ['close', 'save'],
+    data() {
+        return {
+            mode: 'local',
+            apiKey: '',
+            apiEndpoint: 'https://api.openai.com/v1/chat/completions',
+            model: 'gpt-4o-mini',
+            temperature: 0.7,
+            maxTokens: 2000,
+            models: [],
+        };
+    },
+    mounted() {
+        const config = AIService.getConfig();
+        Object.assign(this, config);
+        this.models = AIService.getAvailableModels();
+        AIService._loadConfig();
+        const savedConfig = AIService.getConfig();
+        Object.assign(this, savedConfig);
+    },
+    methods: {
+        onSave() {
+            AIService.updateConfig({
+                mode: this.mode,
+                apiKey: this.apiKey,
+                apiEndpoint: this.apiEndpoint,
+                model: this.model,
+                temperature: this.temperature,
+                maxTokens: this.maxTokens,
+            });
+            this.$emit('save');
+            this.$emit('close');
+        }
+    },
+    template: `
+        <div class="modal-overlay" :class="{ show: show }" role="dialog" aria-modal="true" @click.self="$emit('close')">
+            <div class="modal settings-modal">
+                <div class="modal-header">
+                    <h3>⚙️ AI 模型设置</h3>
+                    <button class="btn-icon modal-close" aria-label="关闭" @click="$emit('close')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body settings-body">
+                    <div class="settings-section">
+                        <h4>运行模式</h4>
+                        <div class="mode-selector">
+                            <label class="mode-option" :class="{ active: mode === 'local' }">
+                                <input type="radio" v-model="mode" value="local">
+                                <span class="mode-radio"></span>
+                                <span class="mode-label">本地模式</span>
+                                <span class="mode-desc">使用内置规则引擎，无需 API</span>
+                            </label>
+                            <label class="mode-option" :class="{ active: mode === 'api' }">
+                                <input type="radio" v-model="mode" value="api">
+                                <span class="mode-radio"></span>
+                                <span class="mode-label">API 模式</span>
+                                <span class="mode-desc">调用大模型 API，支持多种模型</span>
+                            </label>
+                        </div>
+                    </div>
+                    <template v-if="mode === 'api'">
+                        <div class="settings-section">
+                            <h4>选择模型</h4>
+                            <select v-model="model" class="model-select">
+                                <option v-for="m in models" :key="m.id" :value="m.id">
+                                    {{ m.icon }} {{ m.name }} ({{ m.provider }})
+                                </option>
+                            </select>
+                        </div>
+                        <div class="settings-section">
+                            <h4>API 配置</h4>
+                            <div class="form-group">
+                                <label>API Key</label>
+                                <input type="password" v-model="apiKey" placeholder="sk-..." class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label>API Endpoint</label>
+                                <input type="text" v-model="apiEndpoint" placeholder="https://api.openai.com/v1/chat/completions" class="form-input">
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <h4>生成参数</h4>
+                            <div class="form-group">
+                                <label>Temperature: {{ temperature }}</label>
+                                <input type="range" v-model.number="temperature" min="0" max="2" step="0.1" class="range-input">
+                            </div>
+                            <div class="form-group">
+                                <label>Max Tokens: {{ maxTokens }}</label>
+                                <input type="range" v-model.number="maxTokens" min="256" max="4096" step="256" class="range-input">
+                            </div>
+                        </div>
+                    </template>
+                    <div class="settings-footer">
+                        <button class="btn-secondary" @click="$emit('close')">取消</button>
+                        <button class="btn-primary" @click="onSave">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `
+};
+
 // ==================== 主 Vue 应用 ====================
 const { createApp, ref, computed, watch, onMounted, onUnmounted } = Vue;
 
@@ -918,6 +1024,7 @@ const app = createApp({
         'history-modal': HistoryModalComponent,
         'user-modal': UserModalComponent,
         'doc-manager': DocManagerComponent,
+        'settings-modal': SettingsModalComponent,
         'envelope': EnvelopeComponent,
         'toast': ToastComponent
     },
@@ -1722,6 +1829,11 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                 @switch="onSwitchDocument"
                 @delete="onDeleteDocument"
                 @rename="onRenameDocument"
+            />
+            <settings-modal
+                :show="showSettingsModal"
+                @close="showSettingsModal = false"
+                @save="showToastMsg('AI 设置已保存', 'success')"
             />
             <envelope
                 :show="showEnvelope"
