@@ -1,7 +1,7 @@
 /* ============================================
-   TextCraft v10.0 - AI-Powered Text Processing System
+   TextCraft v11.0 - AI-Powered Text Processing System
    架构：Vue 3 + 模块化前端架构 (Store / Services / Router / UI)
-   功能：多模板智能文本生成 / 语义转换引擎 / 用户级历史记录 / 导出 JSON/文本 / 暗色主题
+   功能：多模板智能文本生成 / 语义转换引擎 / 用户级历史记录 / 导出 JSON/文本 / 暗色主题 / Markdown渲染
    ============================================ */
 
 /* --- CSS Variables --- */
@@ -640,8 +640,112 @@ body {
     color: #2c2c2c;
     font-family: var(--font-body);
     min-height: 200px;
-    white-space: pre-wrap;
     word-break: break-word;
+}
+
+/* Markdown rendered content styles */
+.preview-letter-content :where(h1, h2, h3, h4, h5, h6) {
+    margin: 1.5em 0 0.5em;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.preview-letter-content h1 {
+    font-size: 1.8em;
+}
+
+.preview-letter-content h2 {
+    font-size: 1.5em;
+}
+
+.preview-letter-content h3 {
+    font-size: 1.25em;
+}
+
+.preview-letter-content p {
+    margin: 0.8em 0;
+}
+
+.preview-letter-content ul,
+.preview-letter-content ol {
+    padding-left: 1.5em;
+    margin: 0.8em 0;
+}
+
+.preview-letter-content li {
+    margin: 0.3em 0;
+}
+
+.preview-letter-content blockquote {
+    margin: 1em 0;
+    padding: 0.5em 1em;
+    border-left: 4px solid var(--color-primary);
+    background: var(--color-bg-warm);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.preview-letter-content code {
+    padding: 0.2em 0.4em;
+    background: var(--color-bg-warm);
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9em;
+}
+
+.preview-letter-content pre {
+    padding: 1em;
+    background: var(--color-bg-warm);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    margin: 1em 0;
+}
+
+.preview-letter-content pre code {
+    padding: 0;
+    background: none;
+}
+
+.preview-letter-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+}
+
+.preview-letter-content th,
+.preview-letter-content td {
+    padding: 0.5em 0.8em;
+    border: 1px solid var(--color-border);
+    text-align: left;
+}
+
+.preview-letter-content th {
+    background: var(--color-bg-warm);
+    font-weight: 600;
+}
+
+.preview-letter-content hr {
+    border: none;
+    border-top: 2px solid var(--color-border);
+    margin: 1.5em 0;
+}
+
+.preview-letter-content a {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+.preview-letter-content strong {
+    font-weight: 600;
+}
+
+.preview-letter-content em {
+    font-style: italic;
+}
+
+/* KaTeX styles */
+.preview-letter-content .katex-display {
+    margin: 1em 0;
+    overflow-x: auto;
 }
 
 .preview-letter-footer {

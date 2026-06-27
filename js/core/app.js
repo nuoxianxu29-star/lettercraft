@@ -742,6 +742,30 @@ const PreviewPanelComponent = {
             div.textContent = text;
             return div.innerHTML;
         },
+        renderMarkdown(text) {
+            if (typeof marked !== 'undefined') {
+                let html = marked.parse(text);
+                // 处理 LaTeX 公式
+                html = html.replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
+                    try {
+                        if (typeof katex !== 'undefined') {
+                            return katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false });
+                        }
+                    } catch (e) { return match; }
+                    return match;
+                });
+                html = html.replace(/\$([^\$]+?)\$/g, (match, formula) => {
+                    try {
+                        if (typeof katex !== 'undefined') {
+                            return katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false });
+                        }
+                    } catch (e) { return match; }
+                    return match;
+                });
+                return html;
+            }
+            return text.replace(/\n/g, '<br>');
+        },
         switchMode(mode) {
             this.$emit('update:processing-mode', mode);
         },
@@ -828,7 +852,7 @@ const PreviewPanelComponent = {
                             </div>
                             <span class="preview-letter-style-badge" :class="cssClass">{{ styleName }}</span>
                         </div>
-                        <div class="preview-letter-content" v-html="escapeHtml(currentTransformed).replace(/\\n/g, '<br>')"></div>
+                        <div class="preview-letter-content" v-html="renderMarkdown(currentTransformed)"></div>
                         <div class="preview-letter-footer">
                             <div class="preview-letter-time">{{ currentTime }}</div>
                         </div>
