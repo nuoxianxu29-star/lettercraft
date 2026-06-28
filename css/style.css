@@ -5474,24 +5474,62 @@ body.dark-theme .bottle-panel {
     position: absolute;
     top: 16px;
     right: 16px;
-    width: 36px;
+    min-width: 36px;
     height: 36px;
-    border-radius: 50%;
+    border-radius: 18px;
     border: none;
     background: var(--color-bg-warm);
     color: var(--color-text);
-    font-size: 18px;
+    font-size: 14px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 4px;
+    padding: 0 12px;
     transition: all 0.2s ease;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .bottle-close-btn:hover {
     background: var(--color-primary);
     color: white;
-    transform: scale(1.1);
+    transform: scale(1.05);
+}
+
+/* 底部关闭栏 */
+.bottle-bottom-bar {
+    padding: 12px 16px;
+    text-align: center;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg-warm);
+}
+
+.bottle-bottom-close {
+    background: none;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    padding: 8px 24px;
+    border-radius: 20px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.bottle-bottom-close:hover {
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+}
+
+/* 暗色主题适配 */
+body.dark-theme .bottle-bottom-bar {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-theme .bottle-bottom-close:hover {
+    background: var(--color-primary-dark);
 }
 
 /* 海域切换 */

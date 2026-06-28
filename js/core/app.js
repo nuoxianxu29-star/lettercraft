@@ -2186,7 +2186,9 @@ const BottlePageComponent = {
 
             <!-- 操作面板 -->
             <div class="bottle-panel">
-                <button class="bottle-close-btn" @click="$emit('close')" title="关闭">✕</button>
+                <button class="bottle-close-btn" @click="$emit('close')" title="关闭 (Esc)">
+                    ✕ 关闭
+                </button>
 
                 <!-- 主视图 -->
                 <div v-if="activeView === 'main'">
@@ -2490,7 +2492,13 @@ const BottlePageComponent = {
                 <div class="throw-success-content">
                     <div class="throw-success-icon">🍾</div>
                     <div class="throw-success-text">瓶子已经漂远啦~</div>
+                    <button class="bottle-action-btn" style="margin-top: 16px; padding: 10px 24px;" @click="$emit('close')">返回主界面</button>
                 </div>
+            </div>
+
+            <!-- 底部关闭栏 -->
+            <div class="bottle-bottom-bar">
+                <button class="bottle-bottom-close" @click="$emit('close')">← 返回</button>
             </div>
         </div>
     `
@@ -3432,6 +3440,7 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
                 showToolsModal.value = false;
                 showAnalysisPanel.value = false;
                 isReadingMode.value = false;
+                showBottlePage.value = false;
             }
         }
 
