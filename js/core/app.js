@@ -1839,7 +1839,7 @@ const BottlePageComponent = {
     emits: ['close', 'throw-success'],
     data() {
         return {
-            activeView: 'main', // main | throw | pick | my-bottles | stats
+            activeView: 'main', // main | throw | pick | my-bottles | stats | travel | notifications
             currentSea: 'all',
             throwContent: '',
             throwStyle: 'glass',
@@ -1854,6 +1854,9 @@ const BottlePageComponent = {
             stars: [],
             fireflies: [],
             seagulls: [],
+            isDaytime: true,
+            searchQuery: '',
+            selectedBottleTravel: null,
         };
     },
     computed: {
@@ -1881,6 +1884,28 @@ const BottlePageComponent = {
             if (!this.pickedBottle) return false;
             return typeof BottleService !== 'undefined' ? BottleService.isFavorite(this.pickedBottle.id) : false;
         },
+        travelRecords() {
+            return typeof BottleService !== 'undefined' ? BottleService.getTravelRecords() : [];
+        },
+        notifications() {
+            return typeof BottleService !== 'undefined' ? BottleService.getNotifications() : [];
+        },
+        unreadNotificationCount() {
+            return typeof BottleService !== 'undefined' ? BottleService.getUnreadNotificationCount() : 0;
+        },
+        filteredMyBottles() {
+            if (!this.searchQuery.trim()) return this.myBottles;
+            const q = this.searchQuery.toLowerCase();
+            return this.myBottles.filter(b =>
+                b.content.toLowerCase().includes(q) ||
+                b.styleName.toLowerCase().includes(q) ||
+                b.thrower.toLowerCase().includes(q)
+            );
+        },
+        selectedBottleTravelHistory() {
+            if (!this.selectedBottleTravel) return [];
+            return typeof BottleService !== 'undefined' ? BottleService.getBottleTravel(this.selectedBottleTravel) : [];
+        },
     },
     watch: {
         show(val) {
@@ -1889,6 +1914,7 @@ const BottlePageComponent = {
                 this.generateFloatingBottles();
                 this.generateFireflies();
                 this.generateSeagulls();
+                this.updateDaytime();
             }
         },
     },
@@ -1902,6 +1928,10 @@ const BottlePageComponent = {
             if (!iso) return '';
             const d = new Date(iso);
             return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+        },
+        updateDaytime() {
+            const hour = new Date().getHours();
+            this.isDaytime = hour >= 6 && hour < 18;
         },
         generateStars() {
             this.stars = Array.from({ length: 100 }, () => ({
@@ -2054,6 +2084,55 @@ const BottlePageComponent = {
             document.body.removeChild(ta);
             this.$emit('throw-success');
         },
+        viewBottleTravel(bottleId) {
+            this.selectedBottleTravel = bottleId;
+            this.activeView = 'travel';
+        },
+        closeTravel() {
+            this.selectedBottleTravel = null;
+            this.activeView = 'my-bottles';
+        },
+        getTravelEventLabel(eventType) {
+            const labels = {
+                thrown: ' 扔出',
+                picked: '🎣 被捞起',
+                smart_picked: '✨ 智能匹配捞起',
+                liked: '❤️ 被点赞',
+                replied: '💬 被回复',
+            };
+            return labels[eventType] || eventType;
+        },
+        markAllNotificationsRead() {
+            BottleService.markAllNotificationsRead();
+        },
+        smartPickBottle() {
+            this.isPicking = true;
+            this.pickPhase = 'casting';
+
+            setTimeout(() => { this.pickPhase = 'waiting'; }, 800);
+            setTimeout(() => { this.pickPhase = 'pulling'; }, 2000);
+
+            setTimeout(() => {
+                this.pickPhase = 'rising';
+                const result = BottleService.smartPickBottle(true, this.currentSea);
+                if (result.success) {
+                    this.pickedBottle = result.bottle;
+                    this.pickedBottle.matchScore = result.matchScore;
+                } else {
+                    this.isPicking = false;
+                    this.pickPhase = 'idle';
+                    this.$emit('close');
+                    setTimeout(() => alert(result.error), 100);
+                    return;
+                }
+            }, 3500);
+
+            setTimeout(() => {
+                this.pickPhase = 'opened';
+                this.isPicking = false;
+                this.showPicked = true;
+            }, 4500);
+        },
     },
     template: `
         <div class="bottle-page" v-if="show">
@@ -2124,9 +2203,14 @@ const BottlePageComponent = {
                             <span class="action-desc">写下你的心情</span>
                         </button>
                         <button class="bottle-action-btn" @click="pickBottle">
-                            <span class="action-icon">🎣</span>
+                            <span class="action-icon"></span>
                             <span class="action-label">捞一个</span>
                             <span class="action-desc">遇见未知的惊喜</span>
+                        </button>
+                        <button class="bottle-action-btn" @click="smartPickBottle">
+                            <span class="action-icon">✨</span>
+                            <span class="action-label">智能捞</span>
+                            <span class="action-desc">情感匹配推荐</span>
                         </button>
                         <button class="bottle-action-btn" @click="activeView = 'my-bottles'">
                             <span class="action-icon">📦</span>
@@ -2174,9 +2258,12 @@ const BottlePageComponent = {
 
                 <!-- 我的瓶子列表 -->
                 <div v-if="activeView === 'my-bottles'">
-                    <h3 style="margin: 0 0 16px; font-size: 18px; color: var(--color-primary-dark);">📦 我的瓶子</h3>
-                    <div class="my-bottles-list" v-if="myBottles.length > 0">
-                        <div class="my-bottle-item" v-for="bottle in myBottles" :key="bottle.id">
+                    <h3 style="margin: 0 0 16px; font-size: 18px; color: var(--color-primary-dark);"> 我的瓶子</h3>
+                    <div class="search-bar" style="margin-bottom: 12px;">
+                        <input type="text" v-model="searchQuery" placeholder="🔍 搜索瓶子内容、风格或发送者..." class="bottle-search-input" />
+                    </div>
+                    <div class="my-bottles-list" v-if="filteredMyBottles.length > 0">
+                        <div class="my-bottle-item" v-for="bottle in filteredMyBottles" :key="bottle.id">
                             <span class="my-bottle-icon">{{ bottleStyles.find(s => s.key === bottle.bottleStyle)?.icon || '🫙' }}</span>
                             <div class="my-bottle-content">
                                 <p>{{ escapeHtml(bottle.content) }}</p>
@@ -2188,14 +2275,38 @@ const BottlePageComponent = {
                                 </div>
                             </div>
                             <div class="my-bottle-actions">
+                                <button class="my-bottle-action" @click="viewBottleTravel(bottle.id)" title="旅行记录">🗺️</button>
                                 <button class="my-bottle-action delete" @click="deleteBottle(bottle.id)">删除</button>
                             </div>
                         </div>
                     </div>
                     <div v-else style="text-align: center; padding: 40px; color: var(--color-text-muted);">
-                        还没有扔过瓶子，去扔一个吧！
+                        {{ searchQuery ? '没有找到匹配的瓶子' : '还没有扔过瓶子，去扔一个吧！' }}
                     </div>
                     <button class="bottle-action-btn" style="flex: none; padding: 8px; margin-top: 12px;" @click="activeView = 'main'">
+                        返回
+                    </button>
+                </div>
+
+                <!-- 旅行记录视图 -->
+                <div v-if="activeView === 'travel'">
+                    <h3 style="margin: 0 0 16px; font-size: 18px; color: var(--color-primary-dark);">️ 瓶子旅行记录</h3>
+                    <div class="travel-timeline" v-if="selectedBottleTravelHistory.length > 0">
+                        <div class="travel-event" v-for="(record, i) in selectedBottleTravelHistory" :key="record.id">
+                            <div class="travel-dot"></div>
+                            <div class="travel-content">
+                                <div class="travel-label">{{ getTravelEventLabel(record.eventType) }}</div>
+                                <div class="travel-meta">
+                                    <span>{{ record.actor }}</span>
+                                    <span>{{ formatDate(record.timestamp) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else style="text-align: center; padding: 40px; color: var(--color-text-muted);">
+                        暂无旅行记录
+                    </div>
+                    <button class="bottle-action-btn" style="flex: none; padding: 8px; margin-top: 12px;" @click="closeTravel">
                         返回
                     </button>
                 </div>

@@ -6,8 +6,10 @@
 const BOTTLE_STORAGE_KEY = 'textcraft_bottles';
 const BOTTLE_MY_KEY = 'textcraft_my_bottles';
 const BOTTLE_FAVORITES_KEY = 'textcraft_bottle_favorites';
+const BOTTLE_TRAVEL_KEY = 'textcraft_bottle_travel';
 const MAX_BOTTLES = 200;
 const MAX_MY_BOTTLES = 50;
+const MAX_TRAVEL_RECORDS = 100;
 
 const BottleService = {
     // 瓶子样式
@@ -101,6 +103,9 @@ const BottleService = {
         }
         localStorage.setItem(BOTTLE_MY_KEY, JSON.stringify(myBottles));
 
+        // 记录旅行轨迹
+        this._recordTravel(bottle.id, 'thrown');
+
         return { success: true, bottle };
     },
 
@@ -139,6 +144,9 @@ const BottleService = {
         pickedBottle.pickCount = (pickedBottle.pickCount || 0) + 1;
         pickedBottle.isPicked = true;
 
+        // 记录旅行轨迹
+        this._recordTravel(pickedBottle.id, 'picked');
+
         // 保存更新
         const idx = allBottles.findIndex(b => b.id === pickedBottle.id);
         if (idx !== -1) {
@@ -147,6 +155,71 @@ const BottleService = {
         }
 
         return { success: true, bottle: pickedBottle };
+    },
+
+    // 智能捞瓶（基于情感匹配）
+    smartPickBottle(excludeMyBottles = true, seaType = 'all') {
+        let allBottles = this.getAllBottles();
+
+        if (allBottles.length === 0) {
+            return { success: false, error: '海里还没有瓶子，扔一个吧！' };
+        }
+
+        // 过滤海域
+        if (seaType !== 'all') {
+            allBottles = allBottles.filter(b => b.seaType === seaType);
+        }
+
+        if (allBottles.length === 0) {
+            return { success: false, error: '这片海域还没有瓶子' };
+        }
+
+        // 排除自己的瓶子
+        if (excludeMyBottles) {
+            const myBottleIds = new Set(this.getMyBottles().map(b => b.id));
+            allBottles = allBottles.filter(b => !myBottleIds.has(b.id));
+        }
+
+        if (allBottles.length === 0) {
+            return { success: false, error: '捞到的都是自己的瓶子，再试试？' };
+        }
+
+        // 情感匹配算法：优先捞取与当前用户情感相似的瓶子
+        const myBottles = this.getMyBottles();
+        const mySentiments = myBottles.map(b => b.sentiment?.score || 0);
+        const avgMySentiment = mySentiments.length > 0 ? mySentiments.reduce((a, b) => a + b, 0) / mySentiments.length : 0;
+
+        // 计算每个瓶子的情感相似度
+        const scoredBottles = allBottles.map(b => {
+            const bottleSentiment = b.sentiment?.score || 0;
+            const similarity = 1 - Math.abs(bottleSentiment - avgMySentiment) / 2; // 0-1 范围
+            const recencyScore = Math.max(0, 1 - (Date.now() - new Date(b.throwTime).getTime()) / (7 * 24 * 60 * 60 * 1000)); // 7天内新鲜度
+            const pickCountPenalty = Math.min(0.5, (b.pickCount || 0) * 0.1); // 被捞多次的瓶子降低权重
+            const score = similarity * 0.5 + recencyScore * 0.3 + (1 - pickCountPenalty) * 0.2;
+            return { bottle: b, score };
+        });
+
+        // 按分数排序，但加入随机性增加惊喜感
+        scoredBottles.sort((a, b) => b.score - a.score);
+        const topCandidates = scoredBottles.slice(0, Math.min(5, scoredBottles.length));
+        const randomIndex = Math.floor(Math.random() * topCandidates.length);
+        const pickedBottle = topCandidates[randomIndex].bottle;
+
+        // 更新捞取次数
+        pickedBottle.pickCount = (pickedBottle.pickCount || 0) + 1;
+        pickedBottle.isPicked = true;
+
+        // 记录旅行轨迹
+        this._recordTravel(pickedBottle.id, 'smart_picked');
+
+        // 保存更新
+        const idx = allBottles.findIndex(b => b.id === pickedBottle.id);
+        if (idx !== -1) {
+            allBottles[idx] = pickedBottle;
+            localStorage.setItem(BOTTLE_STORAGE_KEY, JSON.stringify(allBottles));
+        }
+
+        return { success: true, bottle: pickedBottle, matchScore: topCandidates[randomIndex].score };
     },
 
     // 点赞瓶子
@@ -250,7 +323,97 @@ const BottleService = {
     generateShareText(bottle) {
         const style = this.bottleStyles.find(s => s.key === bottle.bottleStyle);
         const sea = this.seaTypes[bottle.seaType];
-        return ` 我在 TextCraft 捞到一个漂流瓶！\n\n${style ? style.icon : '🫙'} ${bottle.content}\n\n—— 来自 ${bottle.thrower} · ${sea ? sea.emoji + ' ' + sea.name : '未知海域'}`;
+        return ` 我在 TextCraft 捞到一个漂流瓶！\n\n${style ? style.icon : ''} ${bottle.content}\n\n—— 来自 ${bottle.thrower} · ${sea ? sea.emoji + ' ' + sea.name : '未知海域'}`;
+    },
+
+    // 记录瓶子旅行轨迹
+    _recordTravel(bottleId, eventType) {
+        try {
+            const travelRecords = this.getTravelRecords();
+            const record = {
+                id: this._generateId(),
+                bottleId,
+                eventType, // 'thrown' | 'picked' | 'smart_picked' | 'liked' | 'replied'
+                timestamp: new Date().toISOString(),
+                actor: this._getThrowerName(),
+            };
+            travelRecords.unshift(record);
+            if (travelRecords.length > MAX_TRAVEL_RECORDS) {
+                travelRecords.length = MAX_TRAVEL_RECORDS;
+            }
+            localStorage.setItem(BOTTLE_TRAVEL_KEY, JSON.stringify(travelRecords));
+        } catch (e) {
+            console.warn('Failed to record travel:', e);
+        }
+    },
+
+    // 获取旅行记录
+    getTravelRecords() {
+        try {
+            const data = localStorage.getItem(BOTTLE_TRAVEL_KEY);
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            return [];
+        }
+    },
+
+    // 获取瓶子的旅行历史
+    getBottleTravel(bottleId) {
+        return this.getTravelRecords().filter(r => r.bottleId === bottleId);
+    },
+
+    // 获取通知
+    getNotifications() {
+        try {
+            const data = localStorage.getItem('textcraft_bottle_notifications');
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            return [];
+        }
+    },
+
+    // 添加通知
+    addNotification(type, message, bottleId = null) {
+        try {
+            const notifications = this.getNotifications();
+            notifications.unshift({
+                id: this._generateId(),
+                type,
+                message,
+                bottleId,
+                timestamp: new Date().toISOString(),
+                read: false,
+            });
+            // 只保留最近50条通知
+            if (notifications.length > 50) {
+                notifications.length = 50;
+            }
+            localStorage.setItem('textcraft_bottle_notifications', JSON.stringify(notifications));
+        } catch (e) {
+            console.warn('Failed to add notification:', e);
+        }
+    },
+
+    // 标记通知为已读
+    markNotificationRead(notificationId) {
+        const notifications = this.getNotifications();
+        const notif = notifications.find(n => n.id === notificationId);
+        if (notif) {
+            notif.read = true;
+            localStorage.setItem('textcraft_bottle_notifications', JSON.stringify(notifications));
+        }
+    },
+
+    // 标记所有通知为已读
+    markAllNotificationsRead() {
+        const notifications = this.getNotifications();
+        notifications.forEach(n => n.read = true);
+        localStorage.setItem('textcraft_bottle_notifications', JSON.stringify(notifications));
+    },
+
+    // 获取未读通知数量
+    getUnreadNotificationCount() {
+        return this.getNotifications().filter(n => !n.read).length;
     },
 
     // 获取瓶子统计
