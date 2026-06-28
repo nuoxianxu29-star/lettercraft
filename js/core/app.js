@@ -1844,12 +1844,16 @@ const BottlePageComponent = {
             throwContent: '',
             throwStyle: 'glass',
             isPicking: false,
+            pickPhase: 'idle', // idle | casting | waiting | pulling | rising | opened
             pickedBottle: null,
             showPicked: false,
             replyText: '',
             showThrowSuccess: false,
+            throwPhase: 'idle', // idle | throwing | flying | splashing | done
             floatingBottles: [],
             stars: [],
+            fireflies: [],
+            seagulls: [],
         };
     },
     computed: {
@@ -1876,6 +1880,8 @@ const BottlePageComponent = {
             if (val) {
                 this.generateStars();
                 this.generateFloatingBottles();
+                this.generateFireflies();
+                this.generateSeagulls();
             }
         },
     },
@@ -1891,11 +1897,27 @@ const BottlePageComponent = {
             return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
         },
         generateStars() {
-            this.stars = Array.from({ length: 80 }, () => ({
+            this.stars = Array.from({ length: 100 }, () => ({
                 left: Math.random() * 100 + '%',
-                top: Math.random() * 100 + '%',
+                top: (Math.random() * 60) + '%',
                 delay: Math.random() * 3 + 's',
                 size: Math.random() * 2 + 1 + 'px',
+            }));
+        },
+        generateFireflies() {
+            this.fireflies = Array.from({ length: 15 }, () => ({
+                left: Math.random() * 100 + '%',
+                top: (30 + Math.random() * 40) + '%',
+                delay: Math.random() * 5 + 's',
+                duration: (3 + Math.random() * 4) + 's',
+                size: Math.random() * 4 + 2 + 'px',
+            }));
+        },
+        generateSeagulls() {
+            this.seagulls = Array.from({ length: 3 }, (_, i) => ({
+                top: (10 + i * 8 + Math.random() * 5) + '%',
+                delay: (i * 3 + Math.random() * 2) + 's',
+                duration: (15 + Math.random() * 10) + 's',
             }));
         },
         generateFloatingBottles() {
@@ -1916,38 +1938,57 @@ const BottlePageComponent = {
         },
         submitBottle() {
             if (!this.throwContent.trim()) return;
-            const sentiment = typeof ExportService !== 'undefined' ? ExportService.analyzeSentiment(this.throwContent) : { label: '中性', score: 0 };
-            const result = BottleService.throwBottle({
-                content: this.throwContent,
-                styleName: this.currentStyleName || '自定义',
-                styleKey: this.currentStyle || '',
-                bottleStyle: this.throwStyle,
-                sentiment,
-            });
-            if (result.success) {
-                this.showThrowSuccess = true;
-                setTimeout(() => {
-                    this.showThrowSuccess = false;
-                    this.activeView = 'main';
-                    this.throwContent = '';
-                    this.generateFloatingBottles();
-                    this.$emit('throw-success');
-                }, 1500);
-            }
+            this.throwPhase = 'throwing';
+            setTimeout(() => { this.throwPhase = 'flying'; }, 500);
+            setTimeout(() => { this.throwPhase = 'splashing'; }, 1500);
+            setTimeout(() => {
+                this.throwPhase = 'done';
+                const sentiment = typeof ExportService !== 'undefined' ? ExportService.analyzeSentiment(this.throwContent) : { label: '中性', score: 0 };
+                const result = BottleService.throwBottle({
+                    content: this.throwContent,
+                    styleName: this.currentStyleName || '自定义',
+                    styleKey: this.currentStyle || '',
+                    bottleStyle: this.throwStyle,
+                    sentiment,
+                });
+                if (result.success) {
+                    setTimeout(() => {
+                        this.throwPhase = 'idle';
+                        this.showThrowSuccess = true;
+                        setTimeout(() => {
+                            this.showThrowSuccess = false;
+                            this.activeView = 'main';
+                            this.throwContent = '';
+                            this.generateFloatingBottles();
+                            this.$emit('throw-success');
+                        }, 1500);
+                    }, 500);
+                }
+            }, 2500);
         },
         pickBottle() {
             this.isPicking = true;
+            this.pickPhase = 'casting';
+            setTimeout(() => { this.pickPhase = 'waiting'; }, 800);
+            setTimeout(() => { this.pickPhase = 'pulling'; }, 2000);
             setTimeout(() => {
+                this.pickPhase = 'rising';
                 const result = BottleService.pickBottle(true, this.currentSea);
-                this.isPicking = false;
                 if (result.success) {
                     this.pickedBottle = result.bottle;
-                    this.showPicked = true;
                 } else {
+                    this.isPicking = false;
+                    this.pickPhase = 'idle';
                     this.$emit('close');
                     setTimeout(() => alert(result.error), 100);
+                    return;
                 }
-            }, 2000);
+            }, 3500);
+            setTimeout(() => {
+                this.pickPhase = 'opened';
+                this.isPicking = false;
+                this.showPicked = true;
+            }, 4500);
         },
         likeBottle() {
             if (!this.pickedBottle) return;
@@ -1972,6 +2013,7 @@ const BottlePageComponent = {
             this.showPicked = false;
             this.pickedBottle = null;
             this.replyText = '';
+            this.pickPhase = 'idle';
         },
     },
     template: `
@@ -1998,6 +2040,19 @@ const BottlePageComponent = {
                          :style="{ left: bottle.left, bottom: bottle.bottom, animationDelay: bottle.delay, animationDuration: bottle.duration }"
                          :title="bottle.styleName" @click="pickBottle">
                         {{ bottle.emoji }}
+                    </div>
+                </div>
+                <!-- 萤火虫 -->
+                <div class="fireflies">
+                    <div class="firefly" v-for="(ff, i) in fireflies" :key="'ff'+i"
+                         :style="{ left: ff.left, top: ff.top, animationDelay: ff.delay, animationDuration: ff.duration, width: ff.size, height: ff.size }">
+                    </div>
+                </div>
+                <!-- 海鸥 -->
+                <div class="seagulls">
+                    <div class="seagull" v-for="(sg, i) in seagulls" :key="'sg'+i"
+                         :style="{ top: sg.top, animationDelay: sg.delay, animationDuration: sg.duration }">
+                        
                     </div>
                 </div>
             </div>
@@ -2107,11 +2162,32 @@ const BottlePageComponent = {
                 </div>
             </div>
 
-            <!-- 捞瓶子动画 -->
+            <!-- 捞瓶子多阶段动画 -->
             <div class="pick-bottle-animation" v-if="isPicking">
                 <div class="pick-bottle-scene">
-                    <div class="pick-bottle-icon">🎣</div>
-                    <div class="pick-bottle-text">正在捞瓶子...</div>
+                    <!-- 抛竿阶段 -->
+                    <div class="pick-phase" v-if="pickPhase === 'casting'">
+                        <div class="pick-icon">🎣</div>
+                        <div class="pick-text">抛竿入海...</div>
+                    </div>
+                    <!-- 等待阶段 -->
+                    <div class="pick-phase" v-if="pickPhase === 'waiting'">
+                        <div class="pick-icon"></div>
+                        <div class="pick-text">静静等待...</div>
+                        <div class="waiting-dots">
+                            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                        </div>
+                    </div>
+                    <!-- 拉线阶段 -->
+                    <div class="pick-phase" v-if="pickPhase === 'pulling'">
+                        <div class="pick-icon pulling">🎣</div>
+                        <div class="pick-text">有东西上钩了！</div>
+                    </div>
+                    <!-- 升起阶段 -->
+                    <div class="pick-phase" v-if="pickPhase === 'rising'">
+                        <div class="rising-bottle">{{ pickedBottle ? bottleStyles.find(s => s.key === pickedBottle.bottleStyle)?.icon || '🫙' : '🫙' }}</div>
+                        <div class="pick-text">瓶子浮出水面...</div>
+                    </div>
                 </div>
             </div>
 
@@ -2148,6 +2224,32 @@ const BottlePageComponent = {
                     <div class="reply-input-group">
                         <input v-model="replyText" placeholder="回复这个瓶子..." @keyup.enter="replyBottle" />
                         <button class="reply-submit-btn" @click="replyBottle">回复</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 扔瓶子动画 -->
+            <div class="throw-bottle-animation" v-if="throwPhase !== 'idle'">
+                <div class="throw-scene">
+                    <!-- 投掷阶段 -->
+                    <div class="throw-phase" v-if="throwPhase === 'throwing'">
+                        <div class="throw-icon">🍾</div>
+                        <div class="throw-text">用力扔出！</div>
+                    </div>
+                    <!-- 飞行阶段 -->
+                    <div class="throw-phase" v-if="throwPhase === 'flying'">
+                        <div class="flying-bottle">{{ bottleStyles.find(s => s.key === throwStyle)?.icon || '🫙' }}</div>
+                        <div class="throw-text">瓶子在空中飞翔...</div>
+                    </div>
+                    <!-- 入水阶段 -->
+                    <div class="throw-phase" v-if="throwPhase === 'splashing'">
+                        <div class="splash-effect">💦</div>
+                        <div class="throw-text">扑通！瓶子入水啦~</div>
+                    </div>
+                    <!-- 完成阶段 -->
+                    <div class="throw-phase" v-if="throwPhase === 'done'">
+                        <div class="throw-icon">✨</div>
+                        <div class="throw-text">瓶子已经漂远啦~</div>
                     </div>
                 </div>
             </div>
