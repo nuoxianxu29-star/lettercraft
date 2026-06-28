@@ -2016,7 +2016,7 @@ const BottlePageComponent = {
             await this._delay(1500);
             if (!this.isPicking) return;
             this.pickPhase = 'rising';
-            const result = BottleService.pickBottle(true, this.currentSea);
+            const result = await BottleService.pickBottle(true, this.currentSea);
             if (!result.success) {
                 this.isPicking = false;
                 this.pickPhase = 'idle';
@@ -2044,7 +2044,7 @@ const BottlePageComponent = {
             await this._delay(1500);
             if (!this.isPicking) return;
             this.pickPhase = 'rising';
-            const result = BottleService.smartPickBottle(true, this.currentSea);
+            const result = await BottleService.smartPickBottle(true, this.currentSea);
             if (!result.success) {
                 this.isPicking = false;
                 this.pickPhase = 'idle';
