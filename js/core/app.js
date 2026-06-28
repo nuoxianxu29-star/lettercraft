@@ -3172,6 +3172,8 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             onExportWord, onExportMarkdown,
             // v54-v100: 工具箱 & 分析面板
             showToolsModal, showAnalysisPanel, onTools, onAnalysis, onApplyTool,
+            // v103.0: 漂流瓶
+            showBottlePage,
         };
     },
     template: `
