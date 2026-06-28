@@ -503,6 +503,35 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#fa
         };
     },
 
+    // v71.0: 文本难度评估
+    assessTextDifficulty(text) {
+        if (!text || text.length === 0) return { level: '简单', score: 0 };
+        const sentences = text.split(/[。！？.!?]+/).filter(s => s.trim());
+        const avgSentenceLen = sentences.reduce((sum, s) => sum + s.length, 0) / sentences.length;
+        const uniqueChars = new Set([...text]).size;
+        const lexicalDiversity = uniqueChars / text.length;
+        const score = avgSentenceLen * 0.4 + lexicalDiversity * 60;
+        let level = '简单';
+        if (score > 30) level = '中等';
+        if (score > 50) level = '困难';
+        if (score > 70) level = '专业';
+        return { level, score: score.toFixed(1) };
+    },
+
+    // v96.0: 句子结构分析
+    analyzeSentenceStructure(text) {
+        const sentences = text.split(/[。！？.!?]+/).filter(s => s.trim());
+        const types = { declarative: 0, interrogative: 0, exclamatory: 0, imperative: 0 };
+        sentences.forEach(s => {
+            const trimmed = s.trim();
+            if (trimmed.endsWith('？') || trimmed.endsWith('?')) types.interrogative++;
+            else if (trimmed.endsWith('！') || trimmed.endsWith('!')) types.exclamatory++;
+            else if (/^(请|让|把|被|给|叫|使|令)/.test(trimmed)) types.imperative++;
+            else types.declarative++;
+        });
+        return { total: sentences.length, ...types };
+    },
+
     // v73.0: 关键词提取
     extractKeywords(text, topN = 10) {
         const stopWords = new Set(['的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', 'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'dare', 'ought', 'used', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from', 'as', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'because', 'but', 'and', 'or', 'if', 'while', 'that', 'this', 'these', 'those', 'it', 'its']);
