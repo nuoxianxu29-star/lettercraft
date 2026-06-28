@@ -215,12 +215,14 @@ const BottleCloudService = {
             return { success: false, error: 'Cloud service not available' };
         }
 
+        const cloudId = this._toCloudId(bottleId);
+
         try {
             // 检查是否已点赞
             const { data: existingLike } = await this.supabase
                 .from(TABLE_LIKES)
                 .select('id')
-                .eq('bottle_id', bottleId)
+                .eq('bottle_id', cloudId)
                 .eq('user_id', this.userId)
                 .single();
 
@@ -231,31 +233,21 @@ const BottleCloudService = {
             // 插入点赞记录
             const { error: likeError } = await this.supabase
                 .from(TABLE_LIKES)
-                .insert({ bottle_id: bottleId, user_id: this.userId });
+                .insert({ bottle_id: cloudId, user_id: this.userId });
 
             if (likeError) throw likeError;
 
-            // 更新瓶子点赞数
-            const { data: bottle, error: updateError } = await this.supabase
+            // 更新瓶子点赞数（简单更新）
+            const { data: currentBottle } = await this.supabase
                 .from(TABLE_BOTTLES)
-                .update({ likes_count: this.supabase.rpc('increment_likes', { bottle_id: bottleId }) })
-                .eq('id', bottleId)
                 .select('likes_count')
+                .eq('id', cloudId)
                 .single();
 
-            // 如果 RPC 不存在，使用简单更新
-            if (updateError) {
-                const { data: currentBottle } = await this.supabase
-                    .from(TABLE_BOTTLES)
-                    .select('likes_count')
-                    .eq('id', bottleId)
-                    .single();
-
-                await this.supabase
-                    .from(TABLE_BOTTLES)
-                    .update({ likes_count: (currentBottle?.likes_count || 0) + 1 })
-                    .eq('id', bottleId);
-            }
+            await this.supabase
+                .from(TABLE_BOTTLES)
+                .update({ likes_count: (currentBottle?.likes_count || 0) + 1 })
+                .eq('id', cloudId);
 
             return { success: true };
         } catch (e) {
@@ -270,9 +262,11 @@ const BottleCloudService = {
             return { success: false, error: 'Cloud service not available' };
         }
 
+        const cloudId = this._toCloudId(bottleId);
+
         try {
             const reply = {
-                bottle_id: bottleId,
+                bottle_id: cloudId,
                 user_id: this.userId,
                 content: replyContent.trim(),
                 replier_name: this._getThrowerName(),
@@ -293,17 +287,29 @@ const BottleCloudService = {
         }
     },
 
+    // 将本地瓶子 ID 转换为云端 UUID
+    _toCloudId(localId) {
+        return localId.replace('bottle_', '');
+    },
+
+    // 将云端 UUID 转换为本地瓶子 ID
+    _toLocalId(cloudId) {
+        return cloudId.startsWith('bottle_') ? cloudId : 'bottle_' + cloudId;
+    },
+
     // 获取瓶子的回复
     async getBottleReplies(bottleId) {
         if (!this.supabase || !this.isOnline) {
             return { success: false, error: 'Cloud service not available' };
         }
 
+        const cloudId = this._toCloudId(bottleId);
+
         try {
             const { data, error } = await this.supabase
                 .from(TABLE_REPLIES)
                 .select('*')
-                .eq('bottle_id', bottleId)
+                .eq('bottle_id', cloudId)
                 .order('created_at', { ascending: true });
 
             if (error) throw error;
@@ -517,7 +523,7 @@ const BottleCloudService = {
     // 将云端瓶子格式化为 localStorage 兼容格式
     _formatBottleForLocal(cloudBottle) {
         return {
-            id: 'bottle_' + cloudBottle.id,  // 保持 ID 格式一致
+            id: this._toLocalId(cloudBottle.id),
             content: cloudBottle.content,
             styleName: cloudBottle.style_name,
             styleKey: cloudBottle.style_key,

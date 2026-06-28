@@ -1973,15 +1973,15 @@ const BottlePageComponent = {
             this.activeView = 'throw';
             this.throwContent = this.editorContent || '';
         },
-        submitBottle() {
+        async submitBottle() {
             if (!this.throwContent.trim()) return;
             this.throwPhase = 'throwing';
             setTimeout(() => { this.throwPhase = 'flying'; }, 500);
             setTimeout(() => { this.throwPhase = 'splashing'; }, 1500);
-            setTimeout(() => {
+            setTimeout(async () => {
                 this.throwPhase = 'done';
                 const sentiment = typeof ExportService !== 'undefined' ? ExportService.analyzeSentiment(this.throwContent) : { label: '中性', score: 0 };
-                const result = BottleService.throwBottle({
+                const result = await BottleService.throwBottle({
                     content: this.throwContent,
                     styleName: this.currentStyleName || '自定义',
                     styleKey: this.currentStyle || '',
@@ -2063,24 +2063,24 @@ const BottlePageComponent = {
         _delay(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         },
-        likeBottle() {
+        async likeBottle() {
             if (!this.pickedBottle) return;
-            const result = BottleService.likeBottle(this.pickedBottle.id);
+            const result = await BottleService.likeBottle(this.pickedBottle.id);
             if (result.success) {
                 this.pickedBottle.likes = result.likes;
             }
         },
-        replyBottle() {
+        async replyBottle() {
             if (!this.pickedBottle || !this.replyText.trim()) return;
-            const result = BottleService.replyBottle(this.pickedBottle.id, this.replyText);
+            const result = await BottleService.replyBottle(this.pickedBottle.id, this.replyText);
             if (result.success) {
                 this.pickedBottle.replies = result.replies;
                 this.replyText = '';
             }
         },
-        deleteBottle(id) {
+        async deleteBottle(id) {
             if (!confirm('确定要删除这个瓶子吗？此操作不可恢复。')) return;
-            BottleService.deleteMyBottle(id);
+            await BottleService.deleteMyBottle(id);
             this.generateFloatingBottles();
         },
         closePicked() {

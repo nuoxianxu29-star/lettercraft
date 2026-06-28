@@ -187,12 +187,20 @@ const BottleService = {
                 
                 // 更新本地缓存
                 const allBottles = this.getAllBottles();
-                const idx = allBottles.findIndex(b => b.id === bottle.id);
+                let idx = allBottles.findIndex(b => b.id === bottle.id);
                 if (idx !== -1) {
                     allBottles[idx].pickCount = (allBottles[idx].pickCount || 0) + 1;
                     allBottles[idx].isPicked = true;
-                    localStorage.setItem(BOTTLE_STORAGE_KEY, JSON.stringify(allBottles));
+                } else {
+                    // 瓶子不在本地缓存中，添加进去
+                    bottle.pickCount = 1;
+                    bottle.isPicked = true;
+                    allBottles.unshift(bottle);
+                    if (allBottles.length > MAX_BOTTLES) {
+                        allBottles.length = MAX_BOTTLES;
+                    }
                 }
+                localStorage.setItem(BOTTLE_STORAGE_KEY, JSON.stringify(allBottles));
                 
                 this._recordTravel(bottle.id, 'picked');
                 
@@ -264,12 +272,20 @@ const BottleService = {
                 
                 // 更新本地缓存
                 const allBottles = this.getAllBottles();
-                const idx = allBottles.findIndex(b => b.id === bottle.id);
+                let idx = allBottles.findIndex(b => b.id === bottle.id);
                 if (idx !== -1) {
                     allBottles[idx].pickCount = (allBottles[idx].pickCount || 0) + 1;
                     allBottles[idx].isPicked = true;
-                    localStorage.setItem(BOTTLE_STORAGE_KEY, JSON.stringify(allBottles));
+                } else {
+                    // 瓶子不在本地缓存中，添加进去
+                    bottle.pickCount = 1;
+                    bottle.isPicked = true;
+                    allBottles.unshift(bottle);
+                    if (allBottles.length > MAX_BOTTLES) {
+                        allBottles.length = MAX_BOTTLES;
+                    }
                 }
+                localStorage.setItem(BOTTLE_STORAGE_KEY, JSON.stringify(allBottles));
                 
                 this._recordTravel(bottle.id, 'smart_picked');
                 
@@ -347,8 +363,31 @@ const BottleService = {
         return { success: true, bottle: pickedBottle, matchScore: topCandidates[randomIndex].score };
     },
 
-    // 点赞瓶子
-    likeBottle(bottleId) {
+    // 点赞瓶子（支持云端）
+    async likeBottle(bottleId) {
+        // 尝试云端点赞
+        if (_isCloudAvailable()) {
+            const cloudResult = await BottleCloudService.likeBottle(bottleId);
+            if (cloudResult.success) {
+                // 更新本地缓存
+                const allBottles = this.getAllBottles();
+                const bottle = allBottles.find(b => b.id === bottleId);
+                if (bottle) {
+                    bottle.likes = (bottle.likes || 0) + 1;
+                    localStorage.setItem(BOTTLE_STORAGE_KEY, JSON.stringify(allBottles));
+                }
+                const myBottles = this.getMyBottles();
+                const myBottle = myBottles.find(b => b.id === bottleId);
+                if (myBottle) {
+                    myBottle.likes = bottle.likes;
+                    localStorage.setItem(BOTTLE_MY_KEY, JSON.stringify(myBottles));
+                }
+                this.addNotification('like', `你的瓶子收到了一个点赞`, bottleId);
+                return { success: true, likes: bottle.likes };
+            }
+        }
+
+        // 云端不可用时使用本地数据
         const allBottles = this.getAllBottles();
         const bottle = allBottles.find(b => b.id === bottleId);
         if (bottle) {
@@ -371,8 +410,31 @@ const BottleService = {
         return { success: false, error: '瓶子不存在' };
     },
 
-    // 回复瓶子
-    replyBottle(bottleId, replyContent) {
+    // 回复瓶子（支持云端）
+    async replyBottle(bottleId, replyContent) {
+        // 尝试云端回复
+        if (_isCloudAvailable()) {
+            const cloudResult = await BottleCloudService.replyBottle(bottleId, replyContent);
+            if (cloudResult.success) {
+                // 更新本地缓存
+                const allBottles = this.getAllBottles();
+                const bottle = allBottles.find(b => b.id === bottleId);
+                if (bottle) {
+                    if (!bottle.replies) bottle.replies = [];
+                    bottle.replies.push({
+                        id: this._generateId(),
+                        content: replyContent.trim(),
+                        replyTime: new Date().toISOString(),
+                        replier: this._getThrowerName(),
+                    });
+                    localStorage.setItem(BOTTLE_STORAGE_KEY, JSON.stringify(allBottles));
+                }
+                this.addNotification('reply', `你的瓶子收到了一个新回复`, bottleId);
+                return { success: true, replies: bottle.replies };
+            }
+        }
+
+        // 云端不可用时使用本地数据
         const allBottles = this.getAllBottles();
         const bottle = allBottles.find(b => b.id === bottleId);
         if (bottle) {
@@ -393,8 +455,15 @@ const BottleService = {
         return { success: false, error: '瓶子不存在' };
     },
 
-    // 删除我的瓶子
-    deleteMyBottle(bottleId) {
+    // 删除我的瓶子（支持云端）
+    async deleteMyBottle(bottleId) {
+        // 尝试云端删除
+        if (_isCloudAvailable()) {
+            // 提取云端 ID（去掉 'bottle_' 前缀）
+            const cloudId = bottleId.replace('bottle_', '');
+            await BottleCloudService.deleteBottle(cloudId).catch(e => console.warn('Cloud delete failed:', e));
+        }
+
         // 从我的瓶子中删除
         let myBottles = this.getMyBottles();
         myBottles = myBottles.filter(b => b.id !== bottleId);
