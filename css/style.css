@@ -5794,6 +5794,17 @@ body.dark-theme .bottle-panel {
     border-color: var(--color-primary);
 }
 
+.picked-action-btn.favorited {
+    background: #fff0f0;
+    border-color: #e74c3c;
+    color: #e74c3c;
+}
+
+.picked-action-btn.favorited:hover {
+    background: #e74c3c;
+    color: white;
+}
+
 .picked-action-btn.primary {
     background: var(--color-primary);
     color: white;

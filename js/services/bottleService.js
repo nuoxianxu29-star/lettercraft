@@ -5,6 +5,7 @@
 
 const BOTTLE_STORAGE_KEY = 'textcraft_bottles';
 const BOTTLE_MY_KEY = 'textcraft_my_bottles';
+const BOTTLE_FAVORITES_KEY = 'textcraft_bottle_favorites';
 const MAX_BOTTLES = 200;
 const MAX_MY_BOTTLES = 50;
 
@@ -202,7 +203,54 @@ const BottleService = {
             localStorage.setItem(BOTTLE_STORAGE_KEY, JSON.stringify(allBottles));
         }
 
+        // 从收藏中删除
+        let favorites = this.getFavorites();
+        favorites = favorites.filter(b => b.id !== bottleId);
+        localStorage.setItem(BOTTLE_FAVORITES_KEY, JSON.stringify(favorites));
+
         return { success: true };
+    },
+
+    // 获取收藏的瓶子
+    getFavorites() {
+        try {
+            const data = localStorage.getItem(BOTTLE_FAVORITES_KEY);
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            return [];
+        }
+    },
+
+    // 收藏瓶子
+    favoriteBottle(bottle) {
+        const favorites = this.getFavorites();
+        const exists = favorites.find(b => b.id === bottle.id);
+        if (!exists) {
+            favorites.unshift({ ...bottle, favoritedAt: new Date().toISOString() });
+            localStorage.setItem(BOTTLE_FAVORITES_KEY, JSON.stringify(favorites));
+            return { success: true, isFavorite: true };
+        }
+        return { success: false, isFavorite: true };
+    },
+
+    // 取消收藏
+    unfavoriteBottle(bottleId) {
+        let favorites = this.getFavorites();
+        favorites = favorites.filter(b => b.id !== bottleId);
+        localStorage.setItem(BOTTLE_FAVORITES_KEY, JSON.stringify(favorites));
+        return { success: true, isFavorite: false };
+    },
+
+    // 检查是否已收藏
+    isFavorite(bottleId) {
+        return this.getFavorites().some(b => b.id === bottleId);
+    },
+
+    // 生成瓶子分享文本
+    generateShareText(bottle) {
+        const style = this.bottleStyles.find(s => s.key === bottle.bottleStyle);
+        const sea = this.seaTypes[bottle.seaType];
+        return ` 我在 TextCraft 捞到一个漂流瓶！\n\n${style ? style.icon : '🫙'} ${bottle.content}\n\n—— 来自 ${bottle.thrower} · ${sea ? sea.emoji + ' ' + sea.name : '未知海域'}`;
     },
 
     // 获取瓶子统计

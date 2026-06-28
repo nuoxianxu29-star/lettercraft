@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 智能文本生成与转换系统 v9.0 - AI-Powered Text Processing System
  * 架构：Vue 3 + 模块化前端架构
  * 模块：Store / Services / Router / UI / Components
@@ -1874,6 +1874,13 @@ const BottlePageComponent = {
             const style = this.bottleStyles.find(s => s.key === this.pickedBottle.bottleStyle);
             return style || this.bottleStyles[0];
         },
+        favorites() {
+            return typeof BottleService !== 'undefined' ? BottleService.getFavorites() : [];
+        },
+        isPickedFavorite() {
+            if (!this.pickedBottle) return false;
+            return typeof BottleService !== 'undefined' ? BottleService.isFavorite(this.pickedBottle.id) : false;
+        },
     },
     watch: {
         show(val) {
@@ -2014,6 +2021,38 @@ const BottlePageComponent = {
             this.pickedBottle = null;
             this.replyText = '';
             this.pickPhase = 'idle';
+        },
+        toggleFavorite() {
+            if (!this.pickedBottle) return;
+            if (this.isPickedFavorite) {
+                BottleService.unfavoriteBottle(this.pickedBottle.id);
+            } else {
+                BottleService.favoriteBottle(this.pickedBottle);
+            }
+        },
+        shareBottle() {
+            if (!this.pickedBottle) return;
+            const shareText = BottleService.generateShareText(this.pickedBottle);
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(shareText).then(() => {
+                    this.$emit('throw-success');
+                }).catch(() => {
+                    this.fallbackCopy(shareText);
+                });
+            } else {
+                this.fallbackCopy(shareText);
+            }
+        },
+        fallbackCopy(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.$emit('throw-success');
         },
     },
     template: `
