@@ -1,6 +1,7 @@
 /**
- * 漂流瓶服务 - Drift Bottle Service v103.0
+ * 漂流瓶服务 - Drift Bottle Service v104.0
  * 支持：扔瓶子 / 捞瓶子 / 瓶子管理 / 海洋生态
+ * v104.0: 新增 Supabase 云端同步支持，保留 localStorage 作为离线缓存
  */
 
 const BOTTLE_STORAGE_KEY = 'textcraft_bottles';
@@ -11,7 +12,65 @@ const MAX_BOTTLES = 200;
 const MAX_MY_BOTTLES = 50;
 const MAX_TRAVEL_RECORDS = 100;
 
+// 检查云端服务是否可用
+const _isCloudAvailable = () => {
+    return typeof BottleCloudService !== 'undefined' && BottleCloudService.supabase && BottleCloudService.isOnline;
+};
+
+// 缓存云端数据到 localStorage
+const _cacheCloudBottles = (cloudBottles) => {
+    try {
+        const localBottles = cloudBottles.map(b => BottleCloudService._formatBottleForLocal(b));
+        localStorage.setItem(BOTTLE_STORAGE_KEY, JSON.stringify(localBottles));
+        BottleCloudService.cache.bottles = localBottles;
+        BottleCloudService.cache.lastSync = Date.now();
+    } catch (e) {
+        console.warn('Failed to cache cloud bottles:', e);
+    }
+};
+
 const BottleService = {
+    // 云端同步状态
+    cloudSyncEnabled: false,
+    cloudInitialized: false,
+
+    // 初始化云端同步
+    async initCloudSync() {
+        if (this.cloudInitialized) return this.cloudSyncEnabled;
+
+        try {
+            this.cloudSyncEnabled = BottleCloudService.init();
+            this.cloudInitialized = true;
+
+            if (this.cloudSyncEnabled) {
+                // 从云端加载数据
+                await this.syncFromCloud();
+                // 设置实时订阅
+                BottleCloudService.subscribeToNewBottles(async () => {
+                    console.log('New bottle received, refreshing...');
+                    await this.syncFromCloud();
+                });
+            }
+            return this.cloudSyncEnabled;
+        } catch (e) {
+            console.error('Failed to init cloud sync:', e);
+            this.cloudSyncEnabled = false;
+            this.cloudInitialized = true;
+            return false;
+        }
+    },
+
+    // 从云端同步数据
+    async syncFromCloud() {
+        if (!_isCloudAvailable()) return;
+
+        const result = await BottleCloudService.fetchAllBottles({ limit: MAX_BOTTLES });
+        if (result.success) {
+            _cacheCloudBottles(result.bottles);
+            console.log(`Synced ${result.bottles.length} bottles from cloud`);
+        }
+    },
+
     // 瓶子样式
     bottleStyles: [
         { key: 'glass', name: '玻璃瓶', icon: '🫙', color: '#a8d8ea' },
@@ -55,8 +114,8 @@ const BottleService = {
         }
     },
 
-    // 扔瓶子
-    throwBottle(bottleData) {
+    // 扔瓶子（支持云端同步）
+    async throwBottle(bottleData) {
         const { content, styleName, styleKey, bottleStyle, sentiment } = bottleData;
 
         if (!content || content.trim().length === 0) {
@@ -87,7 +146,7 @@ const BottleService = {
             pickCount: 0,
         };
 
-        // 保存到公共瓶子池
+        // 保存到本地（立即生效）
         const allBottles = this.getAllBottles();
         allBottles.unshift(bottle);
         if (allBottles.length > MAX_BOTTLES) {
@@ -106,11 +165,48 @@ const BottleService = {
         // 记录旅行轨迹
         this._recordTravel(bottle.id, 'thrown');
 
+        // 异步上传到云端（不阻塞本地操作）
+        if (_isCloudAvailable()) {
+            BottleCloudService.uploadBottle({ ...bottleData, seaType }).then(result => {
+                if (result.success) {
+                    console.log('Bottle uploaded to cloud:', result.cloudId);
+                }
+            }).catch(e => console.warn('Cloud upload failed:', e));
+        }
+
         return { success: true, bottle };
     },
 
-    // 捞瓶子（随机）
-    pickBottle(excludeMyBottles = true, seaType = 'all') {
+    // 捞瓶子（随机，支持云端）
+    async pickBottle(excludeMyBottles = true, seaType = 'all') {
+        // 优先尝试从云端捞取
+        if (_isCloudAvailable()) {
+            const cloudResult = await BottleCloudService.getRandomBottle({ seaType, excludeMyBottles });
+            if (cloudResult.success) {
+                const bottle = BottleCloudService._formatBottleForLocal(cloudResult.bottle);
+                
+                // 更新本地缓存
+                const allBottles = this.getAllBottles();
+                const idx = allBottles.findIndex(b => b.id === bottle.id);
+                if (idx !== -1) {
+                    allBottles[idx].pickCount = (allBottles[idx].pickCount || 0) + 1;
+                    allBottles[idx].isPicked = true;
+                    localStorage.setItem(BOTTLE_STORAGE_KEY, JSON.stringify(allBottles));
+                }
+                
+                this._recordTravel(bottle.id, 'picked');
+                
+                // 异步更新云端
+                BottleCloudService.updateBottle(cloudResult.bottle.id, {
+                    pick_count: (cloudResult.bottle.pick_count || 0) + 1,
+                    is_picked: true,
+                }).catch(e => console.warn('Cloud update failed:', e));
+                
+                return { success: true, bottle };
+            }
+        }
+
+        // 云端不可用时使用本地数据
         let allBottles = this.getAllBottles();
 
         if (allBottles.length === 0) {
@@ -157,8 +253,37 @@ const BottleService = {
         return { success: true, bottle: pickedBottle };
     },
 
-    // 智能捞瓶（基于情感匹配）
-    smartPickBottle(excludeMyBottles = true, seaType = 'all') {
+    // 智能捞瓶（基于情感匹配，支持云端）
+    async smartPickBottle(excludeMyBottles = true, seaType = 'all') {
+        // 优先尝试云端智能捞取
+        if (_isCloudAvailable()) {
+            const cloudResult = await BottleCloudService.smartPickBottle({ seaType });
+            if (cloudResult.success) {
+                const bottle = BottleCloudService._formatBottleForLocal(cloudResult.bottle);
+                bottle.matchScore = cloudResult.matchScore;
+                
+                // 更新本地缓存
+                const allBottles = this.getAllBottles();
+                const idx = allBottles.findIndex(b => b.id === bottle.id);
+                if (idx !== -1) {
+                    allBottles[idx].pickCount = (allBottles[idx].pickCount || 0) + 1;
+                    allBottles[idx].isPicked = true;
+                    localStorage.setItem(BOTTLE_STORAGE_KEY, JSON.stringify(allBottles));
+                }
+                
+                this._recordTravel(bottle.id, 'smart_picked');
+                
+                // 异步更新云端
+                BottleCloudService.updateBottle(cloudResult.bottle.id, {
+                    pick_count: (cloudResult.bottle.pick_count || 0) + 1,
+                    is_picked: true,
+                }).catch(e => console.warn('Cloud update failed:', e));
+                
+                return { success: true, bottle, matchScore: cloudResult.matchScore };
+            }
+        }
+
+        // 云端不可用时使用本地数据
         let allBottles = this.getAllBottles();
 
         if (allBottles.length === 0) {
@@ -238,6 +363,9 @@ const BottleService = {
                 localStorage.setItem(BOTTLE_MY_KEY, JSON.stringify(myBottles));
             }
 
+            // 生成通知
+            this.addNotification('like', `你的瓶子收到了一个点赞`, bottleId);
+
             return { success: true, likes: bottle.likes };
         }
         return { success: false, error: '瓶子不存在' };
@@ -256,6 +384,10 @@ const BottleService = {
                 replier: this._getThrowerName(),
             });
             localStorage.setItem(BOTTLE_STORAGE_KEY, JSON.stringify(allBottles));
+
+            // 生成通知
+            this.addNotification('reply', `你的瓶子收到了一个新回复`, bottleId);
+
             return { success: true, replies: bottle.replies };
         }
         return { success: false, error: '瓶子不存在' };
@@ -281,6 +413,11 @@ const BottleService = {
         favorites = favorites.filter(b => b.id !== bottleId);
         localStorage.setItem(BOTTLE_FAVORITES_KEY, JSON.stringify(favorites));
 
+        // 清理旅行记录
+        let travel = this.getTravelRecords();
+        travel = travel.filter(r => r.bottleId !== bottleId);
+        localStorage.setItem(BOTTLE_TRAVEL_KEY, JSON.stringify(travel));
+
         return { success: true };
     },
 
@@ -303,7 +440,7 @@ const BottleService = {
             localStorage.setItem(BOTTLE_FAVORITES_KEY, JSON.stringify(favorites));
             return { success: true, isFavorite: true };
         }
-        return { success: false, isFavorite: true };
+        return { success: true, isFavorite: true, alreadyExists: true };
     },
 
     // 取消收藏

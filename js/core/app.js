@@ -1897,9 +1897,9 @@ const BottlePageComponent = {
             if (!this.searchQuery.trim()) return this.myBottles;
             const q = this.searchQuery.toLowerCase();
             return this.myBottles.filter(b =>
-                b.content.toLowerCase().includes(q) ||
-                b.styleName.toLowerCase().includes(q) ||
-                b.thrower.toLowerCase().includes(q)
+                (b.content || '').toLowerCase().includes(q) ||
+                (b.styleName || '').toLowerCase().includes(q) ||
+                (b.thrower || '').toLowerCase().includes(q)
             );
         },
         selectedBottleTravelHistory() {
@@ -2003,29 +2003,65 @@ const BottlePageComponent = {
                 }
             }, 2500);
         },
-        pickBottle() {
+        async pickBottle() {
+            if (this.isPicking) return;
             this.isPicking = true;
             this.pickPhase = 'casting';
-            setTimeout(() => { this.pickPhase = 'waiting'; }, 800);
-            setTimeout(() => { this.pickPhase = 'pulling'; }, 2000);
-            setTimeout(() => {
-                this.pickPhase = 'rising';
-                const result = BottleService.pickBottle(true, this.currentSea);
-                if (result.success) {
-                    this.pickedBottle = result.bottle;
-                } else {
-                    this.isPicking = false;
-                    this.pickPhase = 'idle';
-                    this.$emit('close');
-                    setTimeout(() => alert(result.error), 100);
-                    return;
-                }
-            }, 3500);
-            setTimeout(() => {
-                this.pickPhase = 'opened';
+            await this._delay(800);
+            if (!this.isPicking) return;
+            this.pickPhase = 'waiting';
+            await this._delay(1200);
+            if (!this.isPicking) return;
+            this.pickPhase = 'pulling';
+            await this._delay(1500);
+            if (!this.isPicking) return;
+            this.pickPhase = 'rising';
+            const result = BottleService.pickBottle(true, this.currentSea);
+            if (!result.success) {
                 this.isPicking = false;
-                this.showPicked = true;
-            }, 4500);
+                this.pickPhase = 'idle';
+                this.$emit('close');
+                setTimeout(() => alert(result.error), 100);
+                return;
+            }
+            this.pickedBottle = result.bottle;
+            await this._delay(1000);
+            if (!this.isPicking) return;
+            this.pickPhase = 'opened';
+            this.isPicking = false;
+            this.showPicked = true;
+        },
+        async smartPickBottle() {
+            if (this.isPicking) return;
+            this.isPicking = true;
+            this.pickPhase = 'casting';
+            await this._delay(800);
+            if (!this.isPicking) return;
+            this.pickPhase = 'waiting';
+            await this._delay(1200);
+            if (!this.isPicking) return;
+            this.pickPhase = 'pulling';
+            await this._delay(1500);
+            if (!this.isPicking) return;
+            this.pickPhase = 'rising';
+            const result = BottleService.smartPickBottle(true, this.currentSea);
+            if (!result.success) {
+                this.isPicking = false;
+                this.pickPhase = 'idle';
+                this.$emit('close');
+                setTimeout(() => alert(result.error), 100);
+                return;
+            }
+            this.pickedBottle = result.bottle;
+            this.pickedBottle.matchScore = result.matchScore;
+            await this._delay(1000);
+            if (!this.isPicking) return;
+            this.pickPhase = 'opened';
+            this.isPicking = false;
+            this.showPicked = true;
+        },
+        _delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
         },
         likeBottle() {
             if (!this.pickedBottle) return;
@@ -2043,6 +2079,7 @@ const BottlePageComponent = {
             }
         },
         deleteBottle(id) {
+            if (!confirm('确定要删除这个瓶子吗？此操作不可恢复。')) return;
             BottleService.deleteMyBottle(id);
             this.generateFloatingBottles();
         },
@@ -2094,7 +2131,7 @@ const BottlePageComponent = {
         },
         getTravelEventLabel(eventType) {
             const labels = {
-                thrown: ' 扔出',
+                thrown: '🍾 扔出',
                 picked: '🎣 被捞起',
                 smart_picked: '✨ 智能匹配捞起',
                 liked: '❤️ 被点赞',
@@ -2104,34 +2141,6 @@ const BottlePageComponent = {
         },
         markAllNotificationsRead() {
             BottleService.markAllNotificationsRead();
-        },
-        smartPickBottle() {
-            this.isPicking = true;
-            this.pickPhase = 'casting';
-
-            setTimeout(() => { this.pickPhase = 'waiting'; }, 800);
-            setTimeout(() => { this.pickPhase = 'pulling'; }, 2000);
-
-            setTimeout(() => {
-                this.pickPhase = 'rising';
-                const result = BottleService.smartPickBottle(true, this.currentSea);
-                if (result.success) {
-                    this.pickedBottle = result.bottle;
-                    this.pickedBottle.matchScore = result.matchScore;
-                } else {
-                    this.isPicking = false;
-                    this.pickPhase = 'idle';
-                    this.$emit('close');
-                    setTimeout(() => alert(result.error), 100);
-                    return;
-                }
-            }, 3500);
-
-            setTimeout(() => {
-                this.pickPhase = 'opened';
-                this.isPicking = false;
-                this.showPicked = true;
-            }, 4500);
         },
     },
     template: `
@@ -2203,12 +2212,12 @@ const BottlePageComponent = {
                             <span class="action-desc">写下你的心情</span>
                         </button>
                         <button class="bottle-action-btn" @click="pickBottle">
-                            <span class="action-icon"></span>
+                            <span class="action-icon">🎣</span>
                             <span class="action-label">捞一个</span>
                             <span class="action-desc">遇见未知的惊喜</span>
                         </button>
                         <button class="bottle-action-btn" @click="smartPickBottle">
-                            <span class="action-icon">✨</span>
+                            <span class="action-icon sparkle">✨</span>
                             <span class="action-label">智能捞</span>
                             <span class="action-desc">情感匹配推荐</span>
                         </button>
@@ -2216,6 +2225,16 @@ const BottlePageComponent = {
                             <span class="action-icon">📦</span>
                             <span class="action-label">我的瓶子</span>
                             <span class="action-desc">查看扔出的瓶子</span>
+                        </button>
+                        <button class="bottle-action-btn" @click="activeView = 'notifications'">
+                            <span class="action-icon">🔔</span>
+                            <span class="action-label">通知</span>
+                            <span class="action-desc">{{ unreadNotificationCount > 0 ? unreadNotificationCount + '条未读' : '暂无新通知' }}</span>
+                        </button>
+                        <button class="bottle-action-btn" @click="activeView = 'stats'">
+                            <span class="action-icon">📊</span>
+                            <span class="action-label">统计</span>
+                            <span class="action-desc">查看数据统计</span>
                         </button>
                     </div>
 
@@ -2310,6 +2329,65 @@ const BottlePageComponent = {
                         返回
                     </button>
                 </div>
+
+                <!-- 通知视图 -->
+                <div v-if="activeView === 'notifications'">
+                    <h3 style="margin: 0 0 16px; font-size: 18px; color: var(--color-primary-dark);"> 通知中心</h3>
+                    <div class="notification-list" v-if="notifications.length > 0">
+                        <div class="notification-item" v-for="notif in notifications" :key="notif.id"
+                             :class="{ unread: !notif.read }" @click="BottleService.markNotificationRead(notif.id)">
+                            <div class="notification-icon">{{ notif.type === 'like' ? '❤️' : notif.type === 'reply' ? '💬' : '🔔' }}</div>
+                            <div class="notification-content">
+                                <p>{{ notif.message }}</p>
+                                <span class="notification-time">{{ formatDate(notif.timestamp) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else style="text-align: center; padding: 40px; color: var(--color-text-muted);">
+                        暂无通知
+                    </div>
+                    <button class="bottle-action-btn" style="flex: none; padding: 8px; margin-top: 12px;" @click="activeView = 'main'">
+                        返回
+                    </button>
+                </div>
+
+                <!-- 统计视图 -->
+                <div v-if="activeView === 'stats'">
+                    <h3 style="margin: 0 0 16px; font-size: 18px; color: var(--color-primary-dark);"> 数据统计</h3>
+                    <div class="stats-detail">
+                        <div class="stat-detail-item">
+                            <span class="stat-detail-label">海里瓶子总数</span>
+                            <span class="stat-detail-value">{{ stats.totalBottles || 0 }}</span>
+                        </div>
+                        <div class="stat-detail-item">
+                            <span class="stat-detail-label">我的瓶子</span>
+                            <span class="stat-detail-value">{{ stats.myBottles || 0 }}</span>
+                        </div>
+                        <div class="stat-detail-item">
+                            <span class="stat-detail-label">总被捞次数</span>
+                            <span class="stat-detail-value">{{ stats.totalPicks || 0 }}</span>
+                        </div>
+                        <div class="stat-detail-item">
+                            <span class="stat-detail-label">总点赞数</span>
+                            <span class="stat-detail-value">{{ stats.totalLikes || 0 }}</span>
+                        </div>
+                        <div class="stat-detail-item">
+                            <span class="stat-detail-label">总回复数</span>
+                            <span class="stat-detail-value">{{ stats.totalReplies || 0 }}</span>
+                        </div>
+                        <div class="stat-detail-item" v-if="stats.seaDistribution">
+                            <span class="stat-detail-label">海域分布</span>
+                            <div class="sea-dist">
+                                <span v-for="(count, sea) in stats.seaDistribution" :key="sea" class="sea-dist-item">
+                                    {{ seaTypes[sea]?.emoji || '' }} {{ count }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="bottle-action-btn" style="flex: none; padding: 8px; margin-top: 12px;" @click="activeView = 'main'">
+                        返回
+                    </button>
+                </div>
             </div>
 
             <!-- 捞瓶子多阶段动画 -->
@@ -2322,7 +2400,7 @@ const BottlePageComponent = {
                     </div>
                     <!-- 等待阶段 -->
                     <div class="pick-phase" v-if="pickPhase === 'waiting'">
-                        <div class="pick-icon"></div>
+                        <div class="pick-icon">⏳</div>
                         <div class="pick-text">静静等待...</div>
                         <div class="waiting-dots">
                             <span class="dot"></span><span class="dot"></span><span class="dot"></span>
@@ -2354,14 +2432,17 @@ const BottlePageComponent = {
                     </div>
                     <div class="picked-bottle-content">{{ escapeHtml(pickedBottle.content) }}</div>
                     <div class="picked-bottle-meta">
-                        <span class="meta-tag">🌊 {{ seaTypes[pickedBottle.seaType]?.name || '未知海域' }}</span>
+                        <span class="meta-tag"> {{ seaTypes[pickedBottle.seaType]?.name || '未知海域' }}</span>
                         <span class="meta-tag">💭 {{ pickedBottle.sentiment?.label || '中性' }}</span>
                         <span class="meta-tag">👍 {{ pickedBottle.likes || 0 }}</span>
                         <span class="meta-tag">👁 {{ pickedBottle.pickCount || 0 }}</span>
+                        <span class="meta-tag" v-if="pickedBottle.matchScore">✨ 匹配度 {{ Math.round(pickedBottle.matchScore * 100) }}%</span>
                     </div>
                     <div class="picked-bottle-actions">
                         <button class="picked-action-btn" @click="likeBottle">👍 点赞</button>
-                        <button class="picked-action-btn primary" @click="pickBottle">🎣 再捞一个</button>
+                        <button class="picked-action-btn" :class="{ favorited: isPickedFavorite }" @click="toggleFavorite">{{ isPickedFavorite ? '❤️ 已收藏' : '🤍 收藏' }}</button>
+                        <button class="picked-action-btn" @click="shareBottle">📤 分享</button>
+                        <button class="picked-action-btn primary" @click="pickBottle"> 再捞一个</button>
                     </div>
                     <!-- 回复区域 -->
                     <div v-if="pickedBottle.replies && pickedBottle.replies.length > 0" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--color-border);">
@@ -3578,7 +3659,7 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             <!-- v54-v100: 文本分析面板 -->
             <text-analysis-panel :show="showAnalysisPanel" :content="content" @close="showAnalysisPanel = false" />
             <!-- v103.0: 漂流瓶入口按钮 -->
-            <button class="bottle-entry-btn" @click="showBottlePage = true" title="漂流瓶">🌊</button>
+            <button class="bottle-entry-btn" :class="{ hidden: showBottlePage }" @click="showBottlePage = true" title="漂流瓶">🌊</button>
             <!-- v103.0: 漂流瓶页面 -->
             <bottle-page :show="showBottlePage" :editor-content="content" :current-style="currentStyle" :current-style-name="styles.find(s => s.key === currentStyle)?.name || ''" @close="showBottlePage = false" @throw-success="showToastMsg('瓶子已经出发啦~', 'success')" />
             <toast :show="showToast" :message="toastMessage" :type="toastType" />

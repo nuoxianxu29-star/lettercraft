@@ -5292,6 +5292,10 @@ body {
     transform: scale(0.95);
 }
 
+.bottle-entry-btn.hidden {
+    display: none;
+}
+
 /* 漂流瓶主页面 */
 .bottle-page {
     position: fixed;
@@ -5299,7 +5303,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 1000;
+    z-index: 10001;
     overflow: hidden;
 }
 
@@ -6096,6 +6100,21 @@ body.dark-theme .bottle-panel {
         padding: 6px 12px;
         font-size: 12px;
     }
+
+    .bottle-entry-btn {
+        bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+        right: calc(24px + env(safe-area-inset-right, 0px));
+    }
+
+    .notification-item {
+        padding: 10px;
+    }
+
+    .stat-detail-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
 }
 
 /* 萤火虫 */
@@ -6602,6 +6621,110 @@ body.dark-theme .travel-timeline::before {
 
 body.dark-theme .travel-dot {
     border-color: #1a1a2e;
+}
+
+/* 通知列表样式 */
+.notification-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.notification-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.notification-item:hover {
+    background: rgba(255, 255, 255, 0.95);
+    transform: translateX(4px);
+}
+
+.notification-item.unread {
+    background: rgba(42, 157, 143, 0.1);
+    border-color: rgba(42, 157, 143, 0.3);
+}
+
+.notification-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.notification-content p {
+    margin: 0 0 4px;
+    font-size: 14px;
+    color: var(--color-text);
+}
+
+.notification-time {
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
+/* 统计详情样式 */
+.stats-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.stat-detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--color-border);
+}
+
+.stat-detail-label {
+    font-size: 14px;
+    color: var(--color-text-muted);
+}
+
+.stat-detail-value {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--color-primary-dark);
+}
+
+.sea-dist {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.sea-dist-item {
+    font-size: 13px;
+    color: var(--color-text);
+}
+
+/* 暗色主题适配通知和统计 */
+body.dark-theme .notification-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme .notification-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+body.dark-theme .notification-item.unread {
+    background: rgba(42, 157, 143, 0.15);
+    border-color: rgba(42, 157, 143, 0.3);
+}
+
+body.dark-theme .stat-detail-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 /* 捞到的瓶子展示卡片 */
