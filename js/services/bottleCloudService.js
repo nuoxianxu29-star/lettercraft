@@ -13,10 +13,10 @@
  * - bottle_likes: 匿名用户可插入自己的点赞记录
  */
 
-// Supabase 配置 - 需要用户自行创建 Supabase 项目后替换
+// Supabase 配置
 const SUPABASE_CONFIG = {
-    url: 'YOUR_SUPABASE_URL',      // 例如: https://xxxxx.supabase.co
-    anonKey: 'YOUR_SUPABASE_ANON_KEY'  // 项目设置 > API > anon/public key
+    url: 'https://bkjrewansdmvvsoilxqv.supabase.co',
+    anonKey: 'sb_publishable__z83XGHCv39DO5MAA0VX6Q_YUen6Tmz'
 };
 
 // 数据库表名
