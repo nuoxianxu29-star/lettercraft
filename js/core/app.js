@@ -1833,6 +1833,336 @@ const SettingsModalComponent = {
     `
 };
 
+// ==================== v103.0: 漂流瓶组件 ====================
+const BottlePageComponent = {
+    props: { show: Boolean, editorContent: String, currentStyle: String, currentStyleName: String },
+    emits: ['close', 'throw-success'],
+    data() {
+        return {
+            activeView: 'main', // main | throw | pick | my-bottles | stats
+            currentSea: 'all',
+            throwContent: '',
+            throwStyle: 'glass',
+            isPicking: false,
+            pickedBottle: null,
+            showPicked: false,
+            replyText: '',
+            showThrowSuccess: false,
+            floatingBottles: [],
+            stars: [],
+        };
+    },
+    computed: {
+        seaTypes() {
+            return typeof BottleService !== 'undefined' ? BottleService.seaTypes : {};
+        },
+        bottleStyles() {
+            return typeof BottleService !== 'undefined' ? BottleService.bottleStyles : [];
+        },
+        stats() {
+            return typeof BottleService !== 'undefined' ? BottleService.getStats() : {};
+        },
+        myBottles() {
+            return typeof BottleService !== 'undefined' ? BottleService.getMyBottles() : [];
+        },
+        pickedBottleStyle() {
+            if (!this.pickedBottle) return {};
+            const style = this.bottleStyles.find(s => s.key === this.pickedBottle.bottleStyle);
+            return style || this.bottleStyles[0];
+        },
+    },
+    watch: {
+        show(val) {
+            if (val) {
+                this.generateStars();
+                this.generateFloatingBottles();
+            }
+        },
+    },
+    methods: {
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        },
+        formatDate(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+        },
+        generateStars() {
+            this.stars = Array.from({ length: 80 }, () => ({
+                left: Math.random() * 100 + '%',
+                top: Math.random() * 100 + '%',
+                delay: Math.random() * 3 + 's',
+                size: Math.random() * 2 + 1 + 'px',
+            }));
+        },
+        generateFloatingBottles() {
+            const allBottles = typeof BottleService !== 'undefined' ? BottleService.getAllBottles() : [];
+            const bottleEmojis = { glass: '🫙', bamboo: '🎋', shell: '🐚', crystal: '💎' };
+            this.floatingBottles = allBottles.slice(0, 8).map((b, i) => ({
+                ...b,
+                emoji: bottleEmojis[b.bottleStyle] || '🫙',
+                left: (5 + Math.random() * 90) + '%',
+                bottom: (5 + Math.random() * 25) + '%',
+                delay: (Math.random() * 6) + 's',
+                duration: (4 + Math.random() * 4) + 's',
+            }));
+        },
+        openThrowForm() {
+            this.activeView = 'throw';
+            this.throwContent = this.editorContent || '';
+        },
+        submitBottle() {
+            if (!this.throwContent.trim()) return;
+            const sentiment = typeof ExportService !== 'undefined' ? ExportService.analyzeSentiment(this.throwContent) : { label: '中性', score: 0 };
+            const result = BottleService.throwBottle({
+                content: this.throwContent,
+                styleName: this.currentStyleName || '自定义',
+                styleKey: this.currentStyle || '',
+                bottleStyle: this.throwStyle,
+                sentiment,
+            });
+            if (result.success) {
+                this.showThrowSuccess = true;
+                setTimeout(() => {
+                    this.showThrowSuccess = false;
+                    this.activeView = 'main';
+                    this.throwContent = '';
+                    this.generateFloatingBottles();
+                    this.$emit('throw-success');
+                }, 1500);
+            }
+        },
+        pickBottle() {
+            this.isPicking = true;
+            setTimeout(() => {
+                const result = BottleService.pickBottle(true, this.currentSea);
+                this.isPicking = false;
+                if (result.success) {
+                    this.pickedBottle = result.bottle;
+                    this.showPicked = true;
+                } else {
+                    this.$emit('close');
+                    setTimeout(() => alert(result.error), 100);
+                }
+            }, 2000);
+        },
+        likeBottle() {
+            if (!this.pickedBottle) return;
+            const result = BottleService.likeBottle(this.pickedBottle.id);
+            if (result.success) {
+                this.pickedBottle.likes = result.likes;
+            }
+        },
+        replyBottle() {
+            if (!this.pickedBottle || !this.replyText.trim()) return;
+            const result = BottleService.replyBottle(this.pickedBottle.id, this.replyText);
+            if (result.success) {
+                this.pickedBottle.replies = result.replies;
+                this.replyText = '';
+            }
+        },
+        deleteBottle(id) {
+            BottleService.deleteMyBottle(id);
+            this.generateFloatingBottles();
+        },
+        closePicked() {
+            this.showPicked = false;
+            this.pickedBottle = null;
+            this.replyText = '';
+        },
+    },
+    template: `
+        <div class="bottle-page" v-if="show">
+            <!-- 海洋场景 -->
+            <div class="ocean-scene">
+                <!-- 星空 -->
+                <div class="stars">
+                    <div class="star" v-for="(star, i) in stars" :key="i"
+                         :style="{ left: star.left, top: star.top, animationDelay: star.delay, width: star.size, height: star.size }">
+                    </div>
+                </div>
+                <!-- 月亮 -->
+                <div class="moon"></div>
+                <!-- 波浪 -->
+                <div class="waves">
+                    <div class="wave"></div>
+                    <div class="wave"></div>
+                    <div class="wave"></div>
+                </div>
+                <!-- 漂浮的瓶子 -->
+                <div class="floating-bottles">
+                    <div class="floating-bottle" v-for="(bottle, i) in floatingBottles" :key="bottle.id || i"
+                         :style="{ left: bottle.left, bottom: bottle.bottom, animationDelay: bottle.delay, animationDuration: bottle.duration }"
+                         :title="bottle.styleName" @click="pickBottle">
+                        {{ bottle.emoji }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作面板 -->
+            <div class="bottle-panel">
+                <button class="bottle-close-btn" @click="$emit('close')" title="关闭">✕</button>
+
+                <!-- 主视图 -->
+                <div v-if="activeView === 'main'">
+                    <div class="bottle-stats-panel">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ stats.totalBottles || 0 }}</div>
+                            <div class="stat-label">海里瓶子</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">{{ stats.myBottles || 0 }}</div>
+                            <div class="stat-label">我的瓶子</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">{{ stats.totalPicks || 0 }}</div>
+                            <div class="stat-label">被捞次数</div>
+                        </div>
+                    </div>
+
+                    <div class="bottle-actions">
+                        <button class="bottle-action-btn" @click="openThrowForm">
+                            <span class="action-icon">🍾</span>
+                            <span class="action-label">扔一个</span>
+                            <span class="action-desc">写下你的心情</span>
+                        </button>
+                        <button class="bottle-action-btn" @click="pickBottle">
+                            <span class="action-icon">🎣</span>
+                            <span class="action-label">捞一个</span>
+                            <span class="action-desc">遇见未知的惊喜</span>
+                        </button>
+                        <button class="bottle-action-btn" @click="activeView = 'my-bottles'">
+                            <span class="action-icon">📦</span>
+                            <span class="action-label">我的瓶子</span>
+                            <span class="action-desc">查看扔出的瓶子</span>
+                        </button>
+                    </div>
+
+                    <!-- 海域切换 -->
+                    <div class="sea-tabs">
+                        <button class="sea-tab" v-for="(sea, key) in seaTypes" :key="key"
+                                :class="{ active: currentSea === key }" @click="currentSea = key">
+                            <span class="sea-tab-emoji">{{ sea.emoji }}</span>
+                            <span>{{ sea.name }}</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 扔瓶子表单 -->
+                <div v-if="activeView === 'throw'">
+                    <h3 style="margin: 0 0 16px; font-size: 18px; color: var(--color-primary-dark);">🍾 扔一个漂流瓶</h3>
+                    <div class="throw-bottle-form">
+                        <div class="form-group">
+                            <label>瓶中信</label>
+                            <textarea v-model="throwContent" rows="4" placeholder="写下你想说的话..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>选择瓶子样式</label>
+                            <div class="bottle-style-selector">
+                                <div class="bottle-style-option" v-for="style in bottleStyles" :key="style.key"
+                                     :class="{ selected: throwStyle === style.key }" @click="throwStyle = style.key">
+                                    <span class="style-icon">{{ style.icon }}</span>
+                                    <span class="style-name">{{ style.name }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="submit-bottle-btn" @click="submitBottle" :disabled="!throwContent.trim()">
+                            扔进大海 🌊
+                        </button>
+                        <button class="bottle-action-btn" style="flex: none; padding: 8px;" @click="activeView = 'main'">
+                            返回
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 我的瓶子列表 -->
+                <div v-if="activeView === 'my-bottles'">
+                    <h3 style="margin: 0 0 16px; font-size: 18px; color: var(--color-primary-dark);">📦 我的瓶子</h3>
+                    <div class="my-bottles-list" v-if="myBottles.length > 0">
+                        <div class="my-bottle-item" v-for="bottle in myBottles" :key="bottle.id">
+                            <span class="my-bottle-icon">{{ bottleStyles.find(s => s.key === bottle.bottleStyle)?.icon || '🫙' }}</span>
+                            <div class="my-bottle-content">
+                                <p>{{ escapeHtml(bottle.content) }}</p>
+                                <div class="my-bottle-stats">
+                                    <span>👍 {{ bottle.likes || 0 }}</span>
+                                    <span>👁 {{ bottle.pickCount || 0 }}</span>
+                                    <span>💬 {{ bottle.replies ? bottle.replies.length : 0 }}</span>
+                                    <span>{{ formatDate(bottle.throwTime) }}</span>
+                                </div>
+                            </div>
+                            <div class="my-bottle-actions">
+                                <button class="my-bottle-action delete" @click="deleteBottle(bottle.id)">删除</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else style="text-align: center; padding: 40px; color: var(--color-text-muted);">
+                        还没有扔过瓶子，去扔一个吧！
+                    </div>
+                    <button class="bottle-action-btn" style="flex: none; padding: 8px; margin-top: 12px;" @click="activeView = 'main'">
+                        返回
+                    </button>
+                </div>
+            </div>
+
+            <!-- 捞瓶子动画 -->
+            <div class="pick-bottle-animation" v-if="isPicking">
+                <div class="pick-bottle-scene">
+                    <div class="pick-bottle-icon">🎣</div>
+                    <div class="pick-bottle-text">正在捞瓶子...</div>
+                </div>
+            </div>
+
+            <!-- 展示捞到的瓶子 -->
+            <div class="picked-bottle-display" v-if="showPicked && pickedBottle" @click.self="closePicked">
+                <div class="picked-bottle-card">
+                    <button class="bottle-close-btn" @click="closePicked" style="position: absolute; top: 12px; right: 12px;">✕</button>
+                    <div class="picked-bottle-header">
+                        <span class="picked-bottle-icon">{{ pickedBottleStyle.icon }}</span>
+                        <div class="picked-bottle-info">
+                            <h3>{{ escapeHtml(pickedBottle.styleName) }}</h3>
+                            <div class="thrower">来自 {{ escapeHtml(pickedBottle.thrower) }} · {{ formatDate(pickedBottle.throwTime) }}</div>
+                        </div>
+                    </div>
+                    <div class="picked-bottle-content">{{ escapeHtml(pickedBottle.content) }}</div>
+                    <div class="picked-bottle-meta">
+                        <span class="meta-tag">🌊 {{ seaTypes[pickedBottle.seaType]?.name || '未知海域' }}</span>
+                        <span class="meta-tag">💭 {{ pickedBottle.sentiment?.label || '中性' }}</span>
+                        <span class="meta-tag">👍 {{ pickedBottle.likes || 0 }}</span>
+                        <span class="meta-tag">👁 {{ pickedBottle.pickCount || 0 }}</span>
+                    </div>
+                    <div class="picked-bottle-actions">
+                        <button class="picked-action-btn" @click="likeBottle">👍 点赞</button>
+                        <button class="picked-action-btn primary" @click="pickBottle">🎣 再捞一个</button>
+                    </div>
+                    <!-- 回复区域 -->
+                    <div v-if="pickedBottle.replies && pickedBottle.replies.length > 0" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--color-border);">
+                        <div v-for="reply in pickedBottle.replies" :key="reply.id" style="margin-bottom: 8px; font-size: 13px;">
+                            <strong>{{ escapeHtml(reply.replier) }}</strong>
+                            <span style="color: var(--color-text-muted); margin: 0 4px;">{{ formatDate(reply.replyTime) }}</span>
+                            <p style="margin: 4px 0 0; color: var(--color-text-light);">{{ escapeHtml(reply.content) }}</p>
+                        </div>
+                    </div>
+                    <div class="reply-input-group">
+                        <input v-model="replyText" placeholder="回复这个瓶子..." @keyup.enter="replyBottle" />
+                        <button class="reply-submit-btn" @click="replyBottle">回复</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 扔瓶子成功动画 -->
+            <div class="throw-success" v-if="showThrowSuccess">
+                <div class="throw-success-content">
+                    <div class="throw-success-icon">🍾</div>
+                    <div class="throw-success-text">瓶子已经漂远啦~</div>
+                </div>
+            </div>
+        </div>
+    `
+};
+
 // ==================== 主 Vue 应用 ====================
 const { createApp, ref, computed, watch, onMounted, onUnmounted } = Vue;
 
@@ -1859,6 +2189,7 @@ const app = createApp({
         'phrase-panel': PhrasePanelComponent,
         'tools-modal': ToolsModalComponent,
         'text-analysis-panel': TextAnalysisPanelComponent,
+        'bottle-page': BottlePageComponent,
     },
     setup() {
         // ===== 状态管理 =====
@@ -1969,6 +2300,9 @@ const app = createApp({
         // v54-v100: 工具箱 & 分析面板
         const showToolsModal = ref(false);
         const showAnalysisPanel = ref(false);
+
+        // v103.0: 漂流瓶
+        const showBottlePage = ref(false);
 
         // ===== 计算属性 =====
         const styles = computed(() => {
@@ -2783,6 +3117,10 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             if (isDarkTheme.value) {
                 document.body.classList.add('dark-theme');
             }
+            // v103.0: 生成演示漂流瓶（仅首次）
+            if (typeof BottleService !== 'undefined' && BottleService.getAllBottles().length === 0) {
+                BottleService.generateDemoBottles();
+            }
         });
 
         onUnmounted(() => {
@@ -2985,6 +3323,10 @@ body{font-family:'Noto Serif SC',serif;padding:40px;color:#2c2c2c;background:#ff
             <tools-modal :show="showToolsModal" @close="showToolsModal = false" @apply-tool="onApplyTool" />
             <!-- v54-v100: 文本分析面板 -->
             <text-analysis-panel :show="showAnalysisPanel" :content="content" @close="showAnalysisPanel = false" />
+            <!-- v103.0: 漂流瓶入口按钮 -->
+            <button class="bottle-entry-btn" @click="showBottlePage = true" title="漂流瓶">🌊</button>
+            <!-- v103.0: 漂流瓶页面 -->
+            <bottle-page :show="showBottlePage" :editor-content="content" :current-style="currentStyle" :current-style-name="styles.find(s => s.key === currentStyle)?.name || ''" @close="showBottlePage = false" @throw-success="showToastMsg('瓶子已经出发啦~', 'success')" />
             <toast :show="showToast" :message="toastMessage" :type="toastType" />
         </div>
     `
