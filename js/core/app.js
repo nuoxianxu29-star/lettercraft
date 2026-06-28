@@ -1934,11 +1934,13 @@ const BottlePageComponent = {
             this.isDaytime = hour >= 6 && hour < 18;
         },
         generateStars() {
-            this.stars = Array.from({ length: 100 }, () => ({
+            this.stars = Array.from({ length: 120 }, () => ({
                 left: Math.random() * 100 + '%',
-                top: (Math.random() * 60) + '%',
+                top: (Math.random() * 55) + '%',
                 delay: Math.random() * 3 + 's',
+                duration: (2 + Math.random() * 4) + 's',
                 size: Math.random() * 2 + 1 + 'px',
+                bright: Math.random() > 0.85,
             }));
         },
         generateFireflies() {
@@ -2150,11 +2152,14 @@ const BottlePageComponent = {
                 <!-- 星空 -->
                 <div class="stars">
                     <div class="star" v-for="(star, i) in stars" :key="i"
-                         :style="{ left: star.left, top: star.top, animationDelay: star.delay, width: star.size, height: star.size }">
+                         :class="{ bright: star.bright }"
+                         :style="{ left: star.left, top: star.top, animationDelay: star.delay, animationDuration: star.duration, width: star.size, height: star.size }">
                     </div>
                 </div>
                 <!-- 月亮 -->
                 <div class="moon"></div>
+                <!-- 月光水面倒影 -->
+                <div class="moon-reflection"></div>
                 <!-- 波浪 -->
                 <div class="waves">
                     <div class="wave"></div>
